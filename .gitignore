@@ -1,0 +1,74 @@
+# macOS
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+
+# Xcode and Swift Package Manager
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+.build/
+.swiftpm/
+
+# Go
+*.test
+*.prof
+*.exe
+coverage.out
+
+# Build output
+/build/
+/dist/
+/resources/dipo-sampler
+*.app
+*.dmg
+*.pkg
+
+# NSGo test output
+.nsgo/
+
+# Scratch work
+/spikes/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.swp
+*.swo
+*~
+.#*
+\#*\#
+
+# Editors and IDEs
+.idea/
+.vscode/
+*.iml
+*.code-workspace
+*.sublime-workspace
+*.sublime-project
+.fleet/
+
+# Tool state
+.claude/settings.local.json
+CLAUDE.local.md
+.codegraph/
+.serena/
+
+# Secrets and signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.keystore
+*.mobileprovision
+
+# Dependencies
+node_modules/
