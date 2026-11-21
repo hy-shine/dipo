@@ -60,6 +60,8 @@ dataFolderUnavailable: "Could not find the data folder. Colors stay in memory fo
 colorFileUnreadable: "The existing color file could not be read and is kept. This session uses memory only."
 approximateSRGB: "Approximate sRGB"
 approximateDisplayP3: "Approximate Display P3"
+outsideSRGB: "Outside sRGB"
+outsideSRGBDetail: "This color is outside sRGB. HEX, RGB and HSL give the nearest sRGB color; P3 HEX and CSS P3 keep it."
 invalidShortcutInput: "Use Control, Option or Command with a letter, number or comma."
 shortcutUnavailable: "This shortcut is invalid or already in use. Try another."
 aboutDipo: "About Dipo"

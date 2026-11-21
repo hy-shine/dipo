@@ -168,6 +168,9 @@ final class PickerView: NSView {
         value.color.setFill()
         NSBezierPath(roundedRect: CGRect(x: card.minX + 12, y: card.minY + 153, width: 16, height: 16), xRadius: 4, yRadius: 4).fill()
         drawLabel(value.pixel.hex, at: CGPoint(x: card.minX + 36, y: card.minY + 151), font: .monospacedSystemFont(ofSize: 13, weight: .medium), color: .white)
+        // The HEX is sRGB; a color outside it shows as the nearest sRGB color.
+        drawLabel(value.insideSRGB ? "sRGB" : "≈ sRGB", at: CGPoint(x: card.minX + 99, y: card.minY + 154), font: .systemFont(ofSize: 10, weight: .medium),
+                  color: value.insideSRGB ? NSColor.white.withAlphaComponent(0.55) : .systemOrange)
         drawLabel(hint, at: CGPoint(x: card.minX + 12, y: card.minY + 181), font: .systemFont(ofSize: 10), color: NSColor.white.withAlphaComponent(0.55))
     }
 

@@ -79,6 +79,11 @@ const (
 	pickGlyphSize   core.Points = 14
 )
 
+// badgeRowHeight is the height of the label row above the color field, as tall
+// as the out-of-sRGB badge, so the field does not move when the badge comes and
+// goes.
+const badgeRowHeight core.Points = 22
+
 // Transparency shows as light-gray squares on white in both appearances, so a
 // translucent color reads the same in light and dark.
 const (
@@ -139,7 +144,10 @@ func (app *dipo) currentView(cx *core.Scope) core.Node {
 		core.View{Style: core.Style{Direction: core.Row, Gap: 16, AlignItems: core.AlignCenter}, Children: []core.Node{
 			app.swatchView(cx),
 			core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, Gap: 8}, Children: []core.Node{
-				muted(cx, msgs.CurrentColor(), 11),
+				core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 6, Height: core.Pt(badgeRowHeight)}, Children: []core.Node{
+					muted(cx, msgs.CurrentColor(), 11),
+					app.colorSpaceBadge(cx),
+				}},
 				core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 6}, Children: []core.Node{
 					ui.Input{TestID: "color-input", Label: msgs.EnterColor(), Value: func() string { app.observe(); return app.input }, OnChange: app.editInput, OnSubmit: func(string) { app.applyInput() }, OnBlur: app.commitInput, Placeholder: msgs.ColorPlaceholder(), Style: core.Style{FlexGrow: 1, FlexShrink: 1, Width: core.Pt(0), FontFamily: core.FontMonospace}},
 					app.pickButton(cx),
@@ -157,6 +165,32 @@ func (app *dipo) currentView(cx *core.Scope) core.Node {
 			return core.Text{TestID: "color-input-error", Style: core.Style{FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: colors.Danger()} }, ContentFunc: func() string { app.observe(); return app.inputErr.in(msgs) }}
 		}},
 	}}
+}
+
+// colorSpaceBadge warns while the current color is a pick outside sRGB, whose
+// HEX, RGB and HSL are the nearest sRGB color. Any other color is in sRGB and
+// the row says nothing, as the copy formats' menu rows name the space each
+// writes in.
+func (app *dipo) colorSpaceBadge(cx *core.Scope) core.Node {
+	msgs := locales.For(cx)
+	return core.Show{When: func() bool { app.observe(); return app.outsideSRGB() }, Then: func(*core.Scope) core.Node {
+		return ui.Tooltip{Placement: core.PlaceBottom, Text: msgs.OutsideSRGBDetail(),
+			Trigger: core.View{TestID: "color-space", Children: []core.Node{ui.Badge{Text: msgs.OutsideSRGB(), Variant: ui.BadgeWarn}}}}
+	}}
+}
+
+// colorSpaceName is the space a copy format writes in, as its menu row says.
+func colorSpaceName(format colour.Format) string {
+	if format.DisplayP3() {
+		return "Display P3"
+	}
+	return "sRGB"
+}
+
+// formatOption is a copy format's menu row: its name, and at the end the space
+// it writes in.
+func formatOption(cx *core.Scope, format colour.Format, label string) ui.Option[colour.Format] {
+	return ui.Option[colour.Format]{Value: format, Label: label, Trailing: muted(cx, colorSpaceName(format), 11)}
 }
 
 // pickButton starts a screen pick from the current-color row. Its tooltip names
@@ -230,13 +264,11 @@ func (app *dipo) outputView(cx *core.Scope) core.Node {
 	}
 	return core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
 		muted(cx, msgs.CopyAs(), 12),
-		ui.Select[colour.Format]{TestID: "copy-format", Label: msgs.CopyFormat(), Style: core.Style{Width: core.Pt(140), Height: core.Pt(28)}, Options: []ui.Option[colour.Format]{{Value: colour.HEX, Label: "HEX"}, {Value: colour.RGB, Label: "CSS RGB"}, {Value: colour.HSL, Label: "CSS HSL"}, {Value: colour.P3HEX, Label: "P3 HEX"}, {Value: colour.P3, Label: "CSS P3"}}, Value: func() colour.Format { app.observe(); return app.state.Format }, OnChange: func(format colour.Format) { app.state.Format = format; app.save() }},
-		// The text to copy shows beside the format, except for HEX, which the color field above already shows.
+		ui.Select[colour.Format]{TestID: "copy-format", Label: msgs.CopyFormat(), Style: core.Style{Width: core.Pt(140), Height: core.Pt(28)}, Options: []ui.Option[colour.Format]{formatOption(cx, colour.HEX, "HEX"), formatOption(cx, colour.RGB, "CSS RGB"), formatOption(cx, colour.HSL, "CSS HSL"), formatOption(cx, colour.P3HEX, "P3 HEX"), formatOption(cx, colour.P3, "CSS P3")}, Value: func() colour.Format { app.observe(); return app.state.Format }, OnChange: func(format colour.Format) { app.state.Format = format; app.save() }},
+		// The text to copy shows beside the format, HEX too, so the row keeps its shape in every format.
 		// Two lines fit in the row's height and hold the longest, color(display-p3 …) with an alpha.
 		core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, Width: core.Pt(0)}, Children: []core.Node{
-			core.Show{When: func() bool { app.observe(); return app.state.Format != colour.HEX }, Then: func(cx *core.Scope) core.Node {
-				return core.Text{TestID: "copy-preview", Label: msgs.CopyPreview(), MaxLines: 2, Style: core.Style{FontFamily: core.FontMonospace, FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: ui.ColorsOf(cx).Muted()} }, Selectable: core.SelectableOn, ContentFunc: func() string { app.observe(); return app.colorText(app.current, app.state.Format) }}
-			}},
+			core.Text{TestID: "copy-preview", Label: msgs.CopyPreview(), MaxLines: 2, Style: core.Style{FontFamily: core.FontMonospace, FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: colors.Muted()} }, Selectable: core.SelectableOn, ContentFunc: func() string { app.observe(); return app.colorText(app.current, app.state.Format) }},
 		}},
 		base.Button{TestID: "copy-color", Label: msgs.CopyColor(), Style: rounded(ui.RadiusControl).Merge(core.Style{Width: core.Pt(66), Height: core.Pt(ui.ButtonHeight), AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter, FontSize: 12, FontWeight: 500}), StyleFunc: func() core.Style {
 			palette := cx.Palette()
