@@ -245,6 +245,28 @@ func TestMenuBarIconDefaultsToShownAndPersists(t *testing.T) {
 	}
 }
 
+func TestDockIconDefaultsToShownAndPersists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "Dipo", "colors.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(`{"version":1,"format":"HEX","shortcut":"Ctrl+Alt+C"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, state, err := library.Open(path)
+	if err != nil || state.DockHidden {
+		t.Fatalf("Dock icon hidden = %t, %v for a file saved before the setting; want shown", state.DockHidden, err)
+	}
+	state.DockHidden = true
+	if err := store.Save(state); err != nil {
+		t.Fatal(err)
+	}
+	_, loaded, err := library.Open(path)
+	if err != nil || !loaded.DockHidden {
+		t.Fatalf("reloaded Dock icon hidden = %t, %v; want hidden", loaded.DockHidden, err)
+	}
+}
+
 func TestAutoCopyDefaultsOnAndPersists(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "Dipo", "colors.json")
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
