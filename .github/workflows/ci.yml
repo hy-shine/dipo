@@ -50,7 +50,7 @@ jobs:
 
   # The app and its Swift picker build only on a Mac. The picker's own
   # self-test (make check-native) reads the screen, which a runner has no
-  # permission for, so only its build is checked here.
+  # permission for, so only its build is checked here, for both architectures.
   test:
     name: Test
     runs-on: macos-latest
@@ -66,8 +66,9 @@ jobs:
           go-version-file: go.mod
           cache: true
       # Fails when locales/catalog_gen.go is out of date with the yaml files.
+      # Vets the app for both Mac architectures, Apple silicon and Intel.
       - name: Check the message catalogs and vet the app
-        run: go tool nsgo check -target macos_arm64
+        run: go tool nsgo check -target macos
       - name: Vet
         run: go vet ./...
       - name: Build the picker
