@@ -15,7 +15,7 @@ Dipo is a focused color picker for macOS. It is built for quick, repeated use, w
 ## Features
 
 - Pick from a frozen, magnified screen view; use the arrow keys to move one captured pixel at a time.
-- Copy HEX, CSS RGB, or CSS HSL, with a configurable global pick shortcut.
+- Copy HEX, CSS RGB, or CSS HSL in sRGB, or P3 HEX or CSS P3 in Display P3, with a configurable global pick shortcut.
 - Edit in RGB, HSB, or HSL, including opacity.
 - Check text/background contrast against WCAG AA thresholds.
 - Keep the 20 most recent colors and a separate local favorites list; the menu bar icon lists the recent ones too.
@@ -23,14 +23,14 @@ Dipo is a focused color picker for macOS. It is built for quick, repeated use, w
 
 ## Install
 
-Download the disk image from the [latest release](https://github.com/hy-shine/dipo/releases/latest), open it, and drag Dipo into Applications. It needs macOS 14 or later, and the release is for Apple silicon. A `.sha256` file next to the disk image holds its checksum. Dipo is not notarized, so see [Permissions](#permissions) for the first launch. Once installed, **Settings → About → Check Now** looks for a newer version.
+Download the disk image for your Mac from the [latest release](https://github.com/hy-shine/dipo/releases/latest), `macos-arm64` for Apple silicon or `macos-x64` for Intel, open it, and drag Dipo into Applications. It needs macOS 14 or later. A `.sha256` file next to each disk image holds its checksum. Dipo is not notarized, so see [Permissions](#permissions) for the first launch. Once installed, **Settings → About → Check Now** looks for a newer version.
 
 ## Quick start
 
 ### Requirements
 
 - macOS 14 or later
-- Apple silicon for the current build configuration
+- An Apple silicon or Intel Mac
 - Go 1.27.3 or later
 - Xcode Command Line Tools for the Swift screen picker
 
@@ -49,7 +49,11 @@ The build bundles the native screen picker. The app is signed ad hoc unless `COD
 1. Select **Pick**, or use the global shortcut (default `Ctrl+Alt+C`; `Control+Option+C` on macOS). Click a pixel to pick it; press Esc or right-click to cancel. The color is copied in the selected format unless **Copy After Picking** is off in Settings.
 2. Use **Copy** for the selected format. Recent and favorite colors can be copied by clicking them.
 3. Switch between **Contrast**, **Recent**, and **Favorites** below the editor. Recent colors show a count and can be cleared without deleting favorites.
-4. Open **Settings** (the top-right gear, or `⌘,`) for login, menu bar, Dock, copy and shortcut options. To change the pick shortcut, click its field and press the new combination. Under **About**, **Check Now** looks for a newer version.
+4. Open **Settings** (the top-right gear, or `⌘,`) for login, menu bar, Dock, copy and shortcut options. To change the pick shortcut, click its field and press the new combination; the button beside it restores the default. Under **About**, **Check Now** looks for a newer version.
+
+### Color spaces
+
+HEX, RGB, and HSL are sRGB, as CSS and most web tools read them. Mac displays show Display P3, and some pickers report the display's P3 values, so the same pixel can give other numbers there; choose **P3 HEX** to compare. A pick that sRGB cannot show is marked **Outside sRGB** beside the current color: its sRGB values are the nearest sRGB color, and the Display P3 formats keep it as the screen showed it.
 
 ### Permissions
 
