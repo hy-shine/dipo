@@ -1,5 +1,12 @@
 import AppKit
 
+func pickerHint() -> String {
+    guard let index = CommandLine.arguments.firstIndex(of: "--hint"), CommandLine.arguments.indices.contains(index + 1) else {
+        return "Click to pick · Esc to cancel"
+    }
+    return CommandLine.arguments[index + 1]
+}
+
 MainActor.assumeIsolated {
     let application = NSApplication.shared
     application.setActivationPolicy(.accessory)
@@ -13,7 +20,7 @@ MainActor.assumeIsolated {
             exit(EXIT_FAILURE)
         }
     }
-    let delegate = SamplerDelegate()
+    let delegate = SamplerDelegate(hint: pickerHint())
     application.delegate = delegate
     application.run()
 }

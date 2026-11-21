@@ -20,13 +20,15 @@ final class PickerPanel: NSPanel {
 
 final class PickerView: NSView {
     let snapshot: FrozenDisplay
+    let hint: String
     weak var owner: SamplerDelegate?
     var selection: PixelPosition?
     private var tracking: NSTrackingArea?
     private let invisibleCursor = NSCursor(image: NSImage(size: NSSize(width: 1, height: 1)), hotSpot: .zero)
 
-    init(snapshot: FrozenDisplay) {
+    init(snapshot: FrozenDisplay, hint: String = "Click to pick · Esc to cancel") {
         self.snapshot = snapshot
+        self.hint = hint
         super.init(frame: CGRect(origin: .zero, size: snapshot.frame.size))
     }
 
@@ -164,7 +166,7 @@ final class PickerView: NSView {
         value.color.setFill()
         NSBezierPath(roundedRect: CGRect(x: card.minX + 12, y: card.minY + 153, width: 16, height: 16), xRadius: 4, yRadius: 4).fill()
         drawLabel(value.hex, at: CGPoint(x: card.minX + 36, y: card.minY + 151), font: .monospacedSystemFont(ofSize: 13, weight: .medium), color: .white)
-        drawLabel("点击取色 · Esc 取消", at: CGPoint(x: card.minX + 12, y: card.minY + 181), font: .systemFont(ofSize: 10), color: NSColor.white.withAlphaComponent(0.55))
+        drawLabel(hint, at: CGPoint(x: card.minX + 12, y: card.minY + 181), font: .systemFont(ofSize: 10), color: NSColor.white.withAlphaComponent(0.55))
     }
 
     private func drawLabel(_ text: String, at point: CGPoint, font: NSFont, color: NSColor) {

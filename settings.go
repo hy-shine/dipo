@@ -1,0 +1,78 @@
+package main
+
+import (
+	"github.com/hy-shine/dipo/internal/library"
+	"github.com/hy-shine/dipo/locales"
+
+	"github.com/nsgo-dev/nsgo/core"
+	"github.com/nsgo-dev/nsgo/desktop"
+	"github.com/nsgo-dev/nsgo/ui"
+)
+
+func (app *dipo) settingsView(cx *core.Scope) core.Node {
+	closeWindow := func() {
+		if window := desktop.CurrentWindow(cx); window != nil {
+			window.Hide()
+		}
+	}
+	cx.OnKey("escape", closeWindow)
+	cx.OnKey("mod+w", closeWindow)
+	return core.Dynamic(func(cx *core.Scope) core.Node {
+		colors := ui.ColorsOf(cx)
+		msgs := locales.For(cx)
+		desktop.SetTitle(cx, msgs.Settings())
+		return core.Scroll{TestID: "settings-scroll", Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: []core.Node{
+			core.View{Style: core.Style{Gap: 20, Padding: core.Edges{Left: 20, Right: 20, Top: 18, Bottom: 20}}, Children: []core.Node{
+				ui.FormSection{Title: msgs.General(), Children: []core.Node{
+					ui.FormRow{Title: msgs.Language(), Control: ui.Select[library.Language]{TestID: "language-picker", Label: msgs.Language(), Style: core.Style{Width: core.Pt(160), Height: core.Pt(28)}, Options: []ui.Option[library.Language]{
+						{Value: library.LanguageSystem, Label: msgs.LanguageSystem()},
+						{Value: library.LanguageEnglish, Label: "English"},
+						{Value: library.LanguageSimplified, Label: "简体中文"},
+						{Value: library.LanguageTraditional, Label: "繁體中文"},
+					}, Value: func() library.Language { app.observe(); return app.state.Language }, OnChange: app.setLanguage}},
+					ui.FormRow{Title: msgs.Appearance(), Control: ui.Select[library.Theme]{TestID: "theme-picker", Label: msgs.Appearance(), Style: core.Style{Width: core.Pt(160), Height: core.Pt(28)}, Options: []ui.Option[library.Theme]{{Value: library.ThemeSystem, Label: msgs.ThemeSystem()}, {Value: library.ThemeLight, Label: msgs.ThemeLight()}, {Value: library.ThemeDark, Label: msgs.ThemeDark()}}, Value: func() library.Theme { app.observe(); return app.state.Theme }, OnChange: app.setTheme}},
+					ui.FormRow{Title: msgs.OpenAtLogin(), Control: ui.Switch{TestID: "open-at-login", Label: msgs.OpenAtLogin(), Disabled: func() bool { return app.setLaunchAtLogin == nil }, Checked: func() bool { app.observe(); return app.openAtLogin }, OnChange: app.setOpenAtLogin}},
+					ui.FormRow{Title: msgs.ShowInMenuBar(), Control: ui.Switch{TestID: "show-in-menu-bar", Label: msgs.ShowInMenuBar(), Checked: func() bool { app.observe(); return !app.state.MenuBarHidden }, OnChange: app.setMenuBarVisible}},
+				}},
+				ui.FormSection{Title: msgs.Picking(), Children: []core.Node{
+					core.View{Children: []core.Node{
+						ui.FormRow{Title: msgs.PickShortcut(), Control: core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
+							ui.Input{TestID: "shortcut-input", Label: msgs.PickShortcut(), Style: core.Style{Width: core.Pt(140), FontFamily: core.FontMonospace}, Value: func() string { app.observe(); return app.shortcut }, OnChange: func(text string) { app.shortcut = text; app.notify() }, OnSubmit: func(string) { app.updateShortcut() }},
+							ui.Button{TestID: "shortcut-apply", Text: msgs.Apply(), Variant: ui.ButtonOutline, Size: ui.SizeSmall, OnPress: app.updateShortcut},
+						}}},
+						core.Show{When: func() bool { app.observe(); return app.shortcutErr != nil }, Then: func(*core.Scope) core.Node {
+							return core.Text{TestID: "shortcut-error", Style: core.Style{Padding: core.Edges{Left: 12, Right: 12, Bottom: 8}, FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: colors.Warn()} }, ContentFunc: func() string { app.observe(); return app.shortcutErr.in(msgs) }}
+						}},
+					}},
+					ui.FormRow{Title: msgs.AutoCopy(), Detail: msgs.AutoCopyDetail(), Control: ui.Switch{TestID: "auto-copy", Label: msgs.AutoCopy(), Checked: func() bool { app.observe(); return !app.state.NoAutoCopy }, OnChange: app.setAutoCopy}},
+					core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, JustifyContent: core.JustifySpaceBetween, Gap: 12, Padding: core.Symmetric(10, 12)}, Children: []core.Node{
+						core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, Gap: 4}, Children: []core.Node{
+							core.Text{Content: msgs.ScreenRecording(), Style: core.Style{FontSize: 13}},
+							core.Text{TestID: "permission-state", Style: core.Style{FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: colors.Muted()} }, ContentFunc: func() string {
+								app.observe()
+								switch {
+								case app.permissionChecking:
+									return msgs.PermissionChecking()
+								case app.permissionError != nil:
+									return app.permissionError.in(msgs)
+								case app.permissionGranted:
+									return msgs.PermissionAllowed()
+								case app.permissionChecked:
+									return msgs.PermissionNotAllowed()
+								default:
+									return msgs.PermissionUnchecked()
+								}
+							}},
+						}},
+						core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8, FlexShrink: 0}, Children: []core.Node{
+							ui.Button{TestID: "permission-refresh", Text: msgs.CheckAgain(), Variant: ui.ButtonOutline, Size: ui.SizeSmall, Disabled: func() bool { app.observe(); return app.permissionChecking }, OnPress: app.refreshPermission},
+							ui.Button{TestID: "permission-settings", Text: msgs.OpenSystemSettings(), Variant: ui.ButtonOutline, Size: ui.SizeSmall, OnPress: func() {
+								cx.OpenURL("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture", nil)
+							}},
+						}},
+					}},
+				}},
+			}},
+		}}
+	})
+}

@@ -1,0 +1,15 @@
+name: Dipo
+id: io.github.hy-shine.dipo
+version: 0.0.1
+icon:
+  png: resources/icon.png
+i18n:
+  dir: locales
+  source: en
+macos:
+  category: public.app-category.developer-tools
+build:
+  targets: [macos_arm64]
+  output: build/nsgo
+  installers: false
+  open: false

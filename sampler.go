@@ -41,12 +41,12 @@ func (picked sample) outsideSRGB() bool {
 	return picked.Red < 0 || picked.Red > 1 || picked.Green < 0 || picked.Green > 1 || picked.Blue < 0 || picked.Blue > 1
 }
 
-func sampleScreen(ctx context.Context) (sample, error) {
+func sampleScreen(ctx context.Context, hint string) (sample, error) {
 	helper, err := samplerHelper()
 	if err != nil {
 		return sample{}, err
 	}
-	output, err := runSampler(ctx, helper)
+	output, err := runSampler(ctx, helper, "--hint", hint)
 	if err != nil {
 		return sample{}, err
 	}

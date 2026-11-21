@@ -20,6 +20,12 @@ final class SamplerDelegate: NSObject, NSApplicationDelegate {
     private var activeView: PickerView?
     private var finished = false
     private var screenObserver: NSObjectProtocol?
+    private let hint: String
+
+    init(hint: String) {
+        self.hint = hint
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if CommandLine.arguments.contains("--check-permission") {
@@ -57,7 +63,7 @@ final class SamplerDelegate: NSObject, NSApplicationDelegate {
     private func show(_ snapshots: [FrozenDisplay]) {
         for snapshot in snapshots {
             let panel = PickerPanel(snapshot: snapshot)
-            let view = PickerView(snapshot: snapshot)
+            let view = PickerView(snapshot: snapshot, hint: hint)
             view.owner = self
             panel.contentView = view
             panel.makeFirstResponder(view)

@@ -93,6 +93,37 @@ func TestUnknownThemeFallsBackToSystem(t *testing.T) {
 	}
 }
 
+func TestLanguageDefaultsAndPersists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "Dipo", "colors.json")
+	store, state, err := library.Open(path)
+	if err != nil || state.Language != library.LanguageSystem {
+		t.Fatalf("new language = %q, %v; want system", state.Language, err)
+	}
+	state.Language = library.LanguageTraditional
+	if err := store.Save(state); err != nil {
+		t.Fatal(err)
+	}
+	_, loaded, err := library.Open(path)
+	if err != nil || loaded.Language != library.LanguageTraditional {
+		t.Fatalf("reloaded language = %q, %v; want zh-Hant", loaded.Language, err)
+	}
+}
+
+func TestUnknownLanguageFallsBackToSystem(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "Dipo", "colors.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	data := `{"version":1,"format":"HEX","shortcut":"Ctrl+Alt+C","theme":"dark","language":"klingon"}`
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, loaded, err := library.Open(path)
+	if err != nil || loaded.Language != library.LanguageSystem || loaded.Theme != library.ThemeDark {
+		t.Fatalf("language = %q, theme = %q, %v; want system and dark", loaded.Language, loaded.Theme, err)
+	}
+}
+
 func TestCorruptDataIsPreserved(t *testing.T) {
 	for _, original := range []string{"not JSON", `{"version":99}`, `{"version":1,"format":"HEX","shortcut":"Ctrl+Alt+C","recent":["#zzzzzz"]}`, `{"version":1,"format":"HEX","shortcut":"  "}`} {
 		path := filepath.Join(t.TempDir(), "colors.json")
@@ -189,5 +220,49 @@ func TestLoadedRecordsAreNormalized(t *testing.T) {
 	retained, err := os.ReadFile(path)
 	if err != nil || string(retained) != string(data) {
 		t.Fatalf("loading rewrote original data: %s, %v", retained, err)
+	}
+}
+
+func TestMenuBarIconDefaultsToShownAndPersists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "Dipo", "colors.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(`{"version":1,"format":"HEX","shortcut":"Ctrl+Alt+C"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, state, err := library.Open(path)
+	if err != nil || state.MenuBarHidden {
+		t.Fatalf("menu bar icon hidden = %t, %v for a file saved before the setting; want shown", state.MenuBarHidden, err)
+	}
+	state.MenuBarHidden = true
+	if err := store.Save(state); err != nil {
+		t.Fatal(err)
+	}
+	_, loaded, err := library.Open(path)
+	if err != nil || !loaded.MenuBarHidden {
+		t.Fatalf("reloaded menu bar icon hidden = %t, %v; want hidden", loaded.MenuBarHidden, err)
+	}
+}
+
+func TestAutoCopyDefaultsOnAndPersists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "Dipo", "colors.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(`{"version":1,"format":"HEX","shortcut":"Ctrl+Alt+C"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	store, state, err := library.Open(path)
+	if err != nil || state.NoAutoCopy {
+		t.Fatalf("auto copy off = %t, %v for a file saved before the setting; want on", state.NoAutoCopy, err)
+	}
+	state.NoAutoCopy = true
+	if err := store.Save(state); err != nil {
+		t.Fatal(err)
+	}
+	_, loaded, err := library.Open(path)
+	if err != nil || !loaded.NoAutoCopy {
+		t.Fatalf("reloaded auto copy off = %t, %v; want off", loaded.NoAutoCopy, err)
 	}
 }
