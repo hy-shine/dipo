@@ -23,7 +23,7 @@ func (app *dipo) settingsView(cx *core.Scope) core.Node {
 		msgs := locales.For(cx)
 		desktop.SetTitle(cx, msgs.Settings())
 		return core.Scroll{TestID: "settings-scroll", Ref: &app.settingsScroll, Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: []core.Node{
-			core.View{Style: core.Style{Gap: 20, Padding: core.Edges{Left: 20, Right: 20, Top: 18, Bottom: 20}}, Children: []core.Node{
+			core.View{Style: core.Style{Gap: 20, Padding: core.Edges{Left: 20, Right: 20, Top: 20, Bottom: 20}}, Children: []core.Node{
 				ui.FormSection{Title: msgs.General(), Children: []core.Node{
 					ui.FormRow{Title: msgs.Language(), Control: ui.Select[library.Language]{TestID: "language-picker", Label: msgs.Language(), Style: core.Style{Width: core.Pt(160), Height: core.Pt(28)}, Options: []ui.Option[library.Language]{
 						{Value: library.LanguageSystem, Label: msgs.LanguageSystem()},
@@ -94,10 +94,10 @@ func (app *dipo) shortcutRecorder(cx *core.Scope, msgs locales.Messages, colors 
 	return core.View{
 		TestID: "shortcut-recorder", Label: msgs.PickShortcut(), Ref: &target,
 		Focusable: func() bool { return true },
-		Style: core.Style{
+		Style: rounded(ui.RadiusControl).Merge(core.Style{
 			Width: core.Pt(140), Height: core.Pt(28), AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
-			CornerRadius: 6, BorderWidth: 1, FocusVisible: ui.FocusRing(cx, 0),
-		},
+			BorderWidth: 1, FocusVisible: ui.FocusRing(cx, 0),
+		}),
 		StyleFunc: func() core.Style {
 			app.observe()
 			border := colors.FieldBorder()

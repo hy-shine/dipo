@@ -26,7 +26,7 @@ func (app *dipo) view(cx *core.Scope) core.Node {
 	cx.OnKey("mod+w", closeWindow)
 	return core.Dynamic(func(cx *core.Scope) core.Node {
 		colors := ui.ColorsOf(cx)
-		return core.View{Style: core.Style{FlexGrow: 1, Padding: core.Edges{Left: 20, Right: 20, Bottom: 18}, Gap: 10}, StyleFunc: func() core.Style { return core.Style{Background: colors.Background(), Color: colors.Text()} }, Children: []core.Node{
+		return core.View{Style: core.Style{FlexGrow: 1, Padding: core.Edges{Left: 20, Right: 20, Bottom: 20}, Gap: 10}, StyleFunc: func() core.Style { return core.Style{Background: colors.Background(), Color: colors.Text()} }, Children: []core.Node{
 			core.View{Desktop: core.DesktopViewProps{WindowDrag: core.WindowDragOn}, Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter}, StyleFunc: func() core.Style {
 				return core.Style{Height: core.Pt(max(32, desktop.TitleBar(cx).Top)), FlexShrink: 0}
 			}, Children: []core.Node{
@@ -57,7 +57,7 @@ func (app *dipo) view(cx *core.Scope) core.Node {
 // original, and pressing the strip restores it.
 const (
 	swatchSize   core.Points = 52
-	swatchRadius core.Points = 7
+	swatchRadius core.Points = ui.RadiusControl
 	stripHeight  core.Points = 16
 	// stripHoverShade is how much white the strip takes under the pointer; the
 	// strip shows user colors, so a theme's hover tint would not read on it.
@@ -86,6 +86,16 @@ const (
 	checkerboardColor core.Color = 0xccccccff
 )
 
+// Every custom corner is a continuous curve of one of nsgo's radii, as nsgo's
+// own controls draw theirs: ui.RadiusControl for controls and small tiles,
+// ui.RadiusCard for cards, and radiusTiny for a swatch inside a control.
+const radiusTiny core.Points = 4
+
+// rounded is a style with corners of radius, cut as a continuous curve.
+func rounded(radius core.Points) core.Style {
+	return core.Style{CornerRadius: radius, BorderCurve: core.BorderCurveContinuous}
+}
+
 // colorSwatch shows what read returns, a translucent color over a checkerboard
 // of cell-point squares. The caller's style sizes it. Only a translucent color
 // gets the white base: under an opaque one it would show as a light fringe
@@ -106,11 +116,11 @@ func (app *dipo) swatchView(cx *core.Scope) core.Node {
 	msgs := locales.For(cx)
 	fill := core.Style{Width: core.Pct(100), Height: core.Pct(100)}
 	return core.View{Style: core.Style{Width: core.Pt(swatchSize), Height: core.Pt(swatchSize), FlexShrink: 0}, Children: []core.Node{
-		colorSwatch("current-swatch", msgs.CurrentColorPreview(), 8, core.Style{Width: core.Pt(swatchSize), Height: core.Pt(swatchSize), CornerRadius: swatchRadius, BorderWidth: 0.5, BorderColor: colors.Border()},
+		colorSwatch("current-swatch", msgs.CurrentColorPreview(), 8, rounded(swatchRadius).Merge(core.Style{Width: core.Pt(swatchSize), Height: core.Pt(swatchSize), BorderWidth: 0.5, BorderColor: colors.Border()}),
 			func() colour.Color { app.observe(); return app.current }),
 		core.Show{When: func() bool { app.observe(); return app.current != app.original }, Then: func(cx *core.Scope) core.Node {
 			restore := locales.For(cx).RestoreOriginal()
-			return core.View{Style: core.Style{Position: core.Absolute, Left: core.Pt(0), Bottom: core.Pt(0), Width: core.Pct(100), Height: core.Pt(stripHeight), CornerRadii: core.Corners{BottomLeft: swatchRadius, BottomRight: swatchRadius}, OverflowX: core.Hidden, OverflowY: core.Hidden}, Children: []core.Node{
+			return core.View{Style: core.Style{Position: core.Absolute, Left: core.Pt(0), Bottom: core.Pt(0), Width: core.Pct(100), Height: core.Pt(stripHeight), CornerRadii: core.Corners{BottomLeft: swatchRadius, BottomRight: swatchRadius}, BorderCurve: core.BorderCurveContinuous, OverflowX: core.Hidden, OverflowY: core.Hidden}, Children: []core.Node{
 				colorSwatch("original-swatch", "", 4, fill, func() colour.Color { app.observe(); return app.original }),
 				core.View{PointerEvents: core.PointerEventsNone, Style: core.Style{Position: core.Absolute, Left: core.Pt(0), Top: core.Pt(0), Width: core.Pct(100), Height: core.Pt(1)}, StyleFunc: func() core.Style { return core.Style{Background: ui.ColorsOf(cx).Border()} }},
 				ui.Tooltip{Text: restore, Placement: core.PlaceBottom, Style: core.Style{Position: core.Absolute, Left: core.Pt(0), Top: core.Pt(0), Width: core.Pct(100), Height: core.Pct(100)}, Trigger: base.Button{TestID: "restore-color", Label: restore, OnPress: func(core.PressEvent) { app.setColor(app.original, false) },
@@ -126,9 +136,9 @@ func (app *dipo) currentView(cx *core.Scope) core.Node {
 	colors := ui.ColorsOf(cx)
 	msgs := locales.For(cx)
 	return core.View{Style: core.Style{Gap: 6}, Children: []core.Node{
-		core.View{Style: core.Style{Direction: core.Row, Gap: 14, AlignItems: core.AlignCenter}, Children: []core.Node{
+		core.View{Style: core.Style{Direction: core.Row, Gap: 16, AlignItems: core.AlignCenter}, Children: []core.Node{
 			app.swatchView(cx),
-			core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, Gap: 7}, Children: []core.Node{
+			core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, Gap: 8}, Children: []core.Node{
 				muted(cx, msgs.CurrentColor(), 11),
 				core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 6}, Children: []core.Node{
 					ui.Input{TestID: "color-input", Label: msgs.EnterColor(), Value: func() string { app.observe(); return app.input }, OnChange: app.editInput, OnSubmit: func(string) { app.applyInput() }, OnBlur: app.commitInput, Placeholder: msgs.ColorPlaceholder(), Style: core.Style{FlexGrow: 1, FlexShrink: 1, Width: core.Pt(0), FontFamily: core.FontMonospace}},
@@ -228,8 +238,9 @@ func (app *dipo) outputView(cx *core.Scope) core.Node {
 				return core.Text{TestID: "copy-preview", Label: msgs.CopyPreview(), MaxLines: 2, Style: core.Style{FontFamily: core.FontMonospace, FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: ui.ColorsOf(cx).Muted()} }, Selectable: core.SelectableOn, ContentFunc: func() string { app.observe(); return app.colorText(app.current, app.state.Format) }}
 			}},
 		}},
-		base.Button{TestID: "copy-color", Label: msgs.CopyColor(), Style: core.Style{Width: core.Pt(66), Height: core.Pt(26), AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter, CornerRadius: 7, FontSize: 12, FontWeight: 500}, StyleFunc: func() core.Style {
-			return core.Style{Background: colors.Accent(), Color: colors.OnAccent(), Hover: &core.Style{Background: ui.Mix(colors.Accent(), core.RGB(0), 0.08)}, Active: &core.Style{Background: ui.Mix(colors.Accent(), core.RGB(0), 0.2)}, FocusVisible: &core.Style{OutlineWidth: 2, OutlineOffset: 2, OutlineColor: colors.Accent()}}
+		base.Button{TestID: "copy-color", Label: msgs.CopyColor(), Style: rounded(ui.RadiusControl).Merge(core.Style{Width: core.Pt(66), Height: core.Pt(ui.ButtonHeight), AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter, FontSize: 12, FontWeight: 500}), StyleFunc: func() core.Style {
+			palette := cx.Palette()
+			return core.Style{Background: palette.Accent, Color: colors.OnAccent(), Hover: &core.Style{Background: palette.AccentHover}, Active: &core.Style{Background: palette.AccentPressed}, FocusVisible: ui.FocusRing(cx, 2)}
 		}, OnPress: func(core.PressEvent) { copyColor() }, Children: []core.Node{core.Text{ContentFunc: func() string {
 			if copied.Get() {
 				return msgs.CopiedButton()
@@ -269,7 +280,7 @@ func (app *dipo) editorView(cx *core.Scope) core.Node {
 					channels = append(channels, core.View{Style: core.Style{Gap: 2}, Children: []core.Node{
 						core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: channelGap}, Children: []core.Node{
 							core.View{Style: core.Style{Width: core.Pt(channelLabelWidth), FlexShrink: 0}, Children: []core.Node{muted(cx, labels[index], 12)}},
-							ui.NumberInput{TestID: fmt.Sprintf("channel-%d-input", index), Label: msgs.ChannelValue(labels[index]), Value: read, OnChange: write, Min: 0, Max: limits[index], Step: 1, Style: core.Style{FlexGrow: 1, Width: core.Pt(112), Height: core.Pt(26)}, IncrementLabel: msgs.Increase(), DecrementLabel: msgs.Decrease()}}},
+							ui.NumberInput{TestID: fmt.Sprintf("channel-%d-input", index), Label: msgs.ChannelValue(labels[index]), Value: read, OnChange: write, Min: 0, Max: limits[index], Step: 1, Style: core.Style{FlexGrow: 1, Width: core.Pt(112)}, IncrementLabel: msgs.Increase(), DecrementLabel: msgs.Decrease()}}},
 						// The bar sits under its number field, not under the letter.
 						core.View{Style: core.Style{Margin: core.Edges{Left: channelLabelWidth + channelGap}}, Children: []core.Node{
 							app.colorSlider(cx, fmt.Sprintf("channel-%d", index), msgs.SliderLabel(labels[index]), limits[index], 1, read, write, func() []core.Gradient { return app.channelGradients(index) }, false),
@@ -339,7 +350,7 @@ func (app *dipo) saturationView(cx *core.Scope) core.Node {
 		app.brightness = float64(1-max(0, min(1, position.Y/bounds.Height))) * 100
 		app.fromHSV()
 	}
-	return core.View{TestID: "color-canvas", Label: msgs.SaturationBrightness(), AccessibilityDescription: msgs.SaturationBrightnessHint(), Ref: &target, Style: core.Style{Height: core.Pt(136), CornerRadius: 5, Overflow: core.Hidden, FocusVisible: &core.Style{OutlineColor: 0x007affff, OutlineWidth: 2, OutlineOffset: 2}},
+	return core.View{TestID: "color-canvas", Label: msgs.SaturationBrightness(), AccessibilityDescription: msgs.SaturationBrightnessHint(), Ref: &target, Style: rounded(ui.RadiusControl).Merge(core.Style{Height: core.Pt(136), Overflow: core.Hidden, FocusVisible: ui.FocusRing(cx, 2)}),
 		StyleFunc: func() core.Style {
 			app.observe()
 			hue := nsgoViewColor(colour.FromHSV(app.hue, 100, 100, 255))
@@ -411,12 +422,12 @@ func (app *dipo) libraryView(cx *core.Scope) core.Node {
 				}
 				var swatches []core.Node
 				for _, value := range values {
-					swatches = append(swatches, core.View{TestID: prefix + strings.TrimPrefix(value.Hex(), "#"), Label: value.Hex(), Style: core.Style{Height: core.Pt(29), CornerRadius: 6, Background: nsgoViewColor(value.Over(colour.Opaque(235, 235, 235))), BorderWidth: 0.5, BorderColor: ui.ColorsOf(cx).Border()}, OnPress: func(core.PressEvent) { app.setColor(value, true); app.copyColor(value) }})
+					swatches = append(swatches, core.View{TestID: prefix + strings.TrimPrefix(value.Hex(), "#"), Label: value.Hex(), Style: rounded(ui.RadiusControl).Merge(core.Style{Height: core.Pt(ui.ButtonHeight), Background: nsgoViewColor(value.Over(colour.Opaque(235, 235, 235))), BorderWidth: 0.5, BorderColor: ui.ColorsOf(cx).Border()}), OnPress: func(core.PressEvent) { app.setColor(value, true); app.copyColor(value) }})
 				}
 				content := []core.Node{core.View{Style: core.Style{Display: core.DisplayGrid, GridTemplateColumns: "repeat(10, minmax(0, 1fr))", Gap: 6}, Children: swatches}, muted(cx, msgs.ClickToCopy(), 11)}
 				if !favorites {
 					content = append([]core.Node{core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, JustifyContent: core.JustifySpaceBetween, Height: core.Pt(19)}, Children: []core.Node{
-						core.Text{TestID: "recent-count", Content: msgs.RecentCount(len(values)), Style: core.Style{FontSize: 10}, StyleFunc: func() core.Style { return core.Style{Color: ui.ColorsOf(cx).Muted()} }},
+						core.Text{TestID: "recent-count", Content: msgs.RecentCount(len(values)), Style: core.Style{FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: ui.ColorsOf(cx).Muted()} }},
 						ui.Button{TestID: "recent-clear", Text: msgs.ClearRecentShort(), Variant: ui.ButtonGhost, Size: ui.SizeSmall, OnPress: func() { app.recentClearPrompt = true; app.notify() }},
 					}}}, content...)
 				}
@@ -449,7 +460,7 @@ func (app *dipo) contrastView(cx *core.Scope) core.Node {
 		core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignEnd, Gap: 10}, Children: []core.Node{
 			core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, Width: core.Pt(0), Gap: 6}, Children: []core.Node{
 				core.Text{TestID: "contrast-foreground-label", Content: msgs.TextColor(), Style: core.Style{FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: colors.Muted()} }},
-				core.View{TestID: "contrast-foreground", Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 9, Height: core.Pt(32), Padding: core.Symmetric(0, 9), CornerRadius: 7, BorderWidth: 1}, StyleFunc: func() core.Style {
+				core.View{TestID: "contrast-foreground", Style: rounded(ui.RadiusControl).Merge(core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8, Height: core.Pt(32), Padding: core.Symmetric(0, 8), BorderWidth: 1}), StyleFunc: func() core.Style {
 					return core.Style{Background: colors.Field(), BorderColor: colors.FieldBorder()}
 				}, Children: []core.Node{
 					contrastColorSwatch(cx, "contrast-foreground-swatch", func() colour.Color { app.observe(); return app.current }),
@@ -468,7 +479,7 @@ func (app *dipo) contrastView(cx *core.Scope) core.Node {
 			core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, Width: core.Pt(0), Gap: 6}, Children: []core.Node{
 				core.Text{TestID: "contrast-background-label", Content: msgs.Background(), Style: core.Style{FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: colors.Muted()} }},
 				core.View{Style: core.Style{Height: core.Pt(32)}, Children: []core.Node{
-					ui.Input{TestID: "contrast-background", Label: msgs.ContrastBackground(), NoAutoCorrect: true, Style: core.Style{Width: core.Pct(100), Height: core.Pt(32), Padding: core.Edges{Left: 34, Right: 9}, CornerRadius: 7, FontFamily: core.FontMonospace, FontSize: 13, FontWeight: 500}, StyleFunc: func() core.Style {
+					ui.Input{TestID: "contrast-background", Label: msgs.ContrastBackground(), NoAutoCorrect: true, Style: rounded(ui.RadiusControl).Merge(core.Style{Width: core.Pct(100), Height: core.Pt(32), Padding: core.Edges{Left: 32, Right: 8}, FontFamily: core.FontMonospace, FontSize: 13, FontWeight: 500}), StyleFunc: func() core.Style {
 						app.observe()
 						if app.backgroundErr != nil {
 							return core.Style{BorderColor: colors.Danger()}
@@ -479,7 +490,7 @@ func (app *dipo) contrastView(cx *core.Scope) core.Node {
 							applyBackground()
 						}
 					}},
-					core.View{PointerEvents: core.PointerEventsNone, Style: core.Style{Position: core.Absolute, Left: core.Pt(9), Top: core.Pt(8)}, Children: []core.Node{
+					core.View{PointerEvents: core.PointerEventsNone, Style: core.Style{Position: core.Absolute, Left: core.Pt(8), Top: core.Pt(8)}, Children: []core.Node{
 						contrastColorSwatch(cx, "contrast-background-swatch", func() colour.Color { app.observe(); return app.background }),
 					}},
 				}},
@@ -490,7 +501,7 @@ func (app *dipo) contrastView(cx *core.Scope) core.Node {
 		}},
 		core.Show{When: validBackground.Get, Then: func(*core.Scope) core.Node {
 			return core.View{Style: core.Style{Gap: 6}, Children: []core.Node{
-				core.View{Style: core.Style{Direction: core.Row, Height: core.Pt(44), AlignItems: core.AlignCenter, JustifyContent: core.JustifySpaceBetween, Padding: core.Symmetric(0, 12), CornerRadius: 6}, StyleFunc: func() core.Style {
+				core.View{Style: rounded(ui.RadiusControl).Merge(core.Style{Direction: core.Row, Height: core.Pt(44), AlignItems: core.AlignCenter, JustifyContent: core.JustifySpaceBetween, Padding: core.Symmetric(0, 12)}), StyleFunc: func() core.Style {
 					app.observe()
 					return core.Style{Background: nsgoViewColor(app.background), Color: nsgoViewColor(app.current.Over(app.background))}
 				}, Children: []core.Node{core.Text{Content: "Aa", Style: core.Style{FontSize: 26, FontWeight: 600}}, core.Text{TestID: "contrast-ratio", Style: core.Style{FontSize: 15, FontFamily: core.FontMonospace}, ContentFunc: func() string {
@@ -501,7 +512,7 @@ func (app *dipo) contrastView(cx *core.Scope) core.Node {
 					}
 					return fmt.Sprintf("%.2f : 1", ratio)
 				}}}},
-				core.Text{TestID: "contrast-result", Style: core.Style{FontSize: 10}, StyleFunc: func() core.Style { return core.Style{Color: colors.Muted()} }, ContentFunc: func() string {
+				core.Text{TestID: "contrast-result", Style: core.Style{FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: colors.Muted()} }, ContentFunc: func() string {
 					app.observe()
 					ratio, err := colour.Contrast(app.current, app.background)
 					if err != nil {
@@ -515,7 +526,7 @@ func (app *dipo) contrastView(cx *core.Scope) core.Node {
 					}
 					return msgs.ContrastBothFail()
 				}},
-				muted(cx, msgs.ContrastCaption(), 10),
+				muted(cx, msgs.ContrastCaption(), 11),
 			}}
 		}, Else: func(*core.Scope) core.Node {
 			return core.Text{Content: msgs.TransparentBackground(), Style: core.Style{FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: colors.Warn()} }}
@@ -524,13 +535,13 @@ func (app *dipo) contrastView(cx *core.Scope) core.Node {
 }
 
 func contrastColorSwatch(cx *core.Scope, id string, read func() colour.Color) core.Node {
-	return colorSwatch(id, "", 4, core.Style{Width: core.Pt(16), Height: core.Pt(16), FlexShrink: 0, CornerRadius: 4, BorderWidth: 0.5, BorderColor: ui.ColorsOf(cx).Border()}, read)
+	return colorSwatch(id, "", 4, rounded(radiusTiny).Merge(core.Style{Width: core.Pt(16), Height: core.Pt(16), FlexShrink: 0, BorderWidth: 0.5, BorderColor: ui.ColorsOf(cx).Border()}), read)
 }
 
 func (app *dipo) permissionBanner(cx *core.Scope) core.Node {
 	colors := ui.ColorsOf(cx)
 	msgs := locales.For(cx)
-	return core.View{Style: core.Style{Padding: core.All(12), Gap: 8, CornerRadius: 7, BorderWidth: 1}, StyleFunc: func() core.Style {
+	return core.View{Style: rounded(ui.RadiusCard).Merge(core.Style{Padding: core.All(12), Gap: 8, BorderWidth: 1}), StyleFunc: func() core.Style {
 		return core.Style{Background: ui.Alpha(colors.Warn(), 0.08), BorderColor: ui.Alpha(colors.Warn(), 0.35)}
 	}, Children: []core.Node{
 		core.View{Style: core.Style{Direction: core.Row, JustifyContent: core.JustifySpaceBetween, AlignItems: core.AlignCenter}, Children: []core.Node{core.Text{Content: msgs.PermissionNeeded(), Style: core.Style{FontWeight: 600, FontSize: 12}}, withTooltip(msgs.ClosePermissionNotice(), ui.Button{TestID: "permission-close", Label: msgs.ClosePermissionNotice(), Icon: lucide.X, Variant: ui.ButtonGhost, Size: ui.SizeSmall, OnPress: func() { app.permissionPrompt = false; app.notify() }})}},

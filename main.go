@@ -358,7 +358,7 @@ func (app *dipo) showSettings() {
 // The settings window is tall enough to show every section without scrolling.
 const (
 	settingsWidth  = 460
-	settingsHeight = 533
+	settingsHeight = 535
 )
 
 func (app *dipo) openSettingsWindow() {
