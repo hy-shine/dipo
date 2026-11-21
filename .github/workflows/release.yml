@@ -134,8 +134,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # nsgo also writes a Windows installer, which a macOS-only app does not ship.
-          rm -f build/release/releases/install.ps1
+          # nsgo also writes install scripts and a checksum of the appcast. The
+          # release ships only the disk image, its checksum and the appcast.
+          rm -f build/release/releases/install.sh build/release/releases/install.ps1 \
+            build/release/releases/appcast-macos_arm64.xml.sha256
           args=(--draft --verify-tag --title "Dipo ${GITHUB_REF_NAME#v}" --generate-notes)
           case "$GITHUB_REF_NAME" in *-*) args+=(--prerelease) ;; esac
           gh release create "$GITHUB_REF_NAME" "${args[@]}" build/release/releases/*
