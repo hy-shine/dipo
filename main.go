@@ -56,8 +56,10 @@ type dipo struct {
 	launchAtLogin      func(done func(on bool))
 	setLaunchAtLogin   func(on bool)
 	recentClearPrompt  bool
-	shortcut           string
+	recording          bool
 	shortcutErr        localizedText
+	shortcutField      *core.Ref
+	settingsScroll     core.Ref
 	background         colour.Color
 	backgroundInput    string
 	backgroundErr      localizedText
@@ -92,7 +94,6 @@ func newDipo(scope *core.Scope) *dipo {
 	if scope != nil {
 		app.revision = core.NewSignal(scope, 0)
 	}
-	app.shortcut = app.state.Shortcut
 	app.setColor(colour.Opaque(19, 22, 27), true)
 	return app
 }
@@ -290,8 +291,8 @@ func (app *dipo) show() {
 }
 
 func (app *dipo) showSettings() {
-	// Text typed in the shortcut field and never applied is not the shortcut in force.
-	app.shortcut, app.shortcutErr = app.state.Shortcut, nil
+	// A refused shortcut leaves the one in force; its message does not outlive the window.
+	app.shortcutErr = nil
 	app.notify()
 	if app.showSettingsWindow != nil {
 		app.showSettingsWindow()
@@ -449,12 +450,48 @@ func (app *dipo) load() {
 		app.storageErr = locales.Messages.ColorFileUnreadable
 		slog.Error("load colors", "error", err)
 	}
-	app.shortcut = app.state.Shortcut
 	app.notify()
 }
 
-func (app *dipo) updateShortcut() {
-	app.registerShortcut(strings.TrimSpace(app.shortcut), true)
+// recordShortcut takes the combination pressed while the shortcut control has
+// the keyboard focus as the new pick shortcut, and says whether it consumed the
+// press. A modifier pressed alone waits for its key, and Tab, Shift+Tab and an
+// unmodified Escape, Return or Space keep their usual jobs, so the control can
+// be left from the keyboard.
+func (app *dipo) recordShortcut(event core.KeyEvent) bool {
+	switch event.Key {
+	case "shift", "ctrl", "alt", "meta", "tab":
+		return false
+	case "escape", "enter", "space":
+		if event.Modifiers == (core.Modifiers{}) {
+			return false
+		}
+	}
+	if event.Repeat {
+		return true
+	}
+	key, err := normalizeShortcut(event.Shortcut())
+	if err != nil {
+		app.shortcutErr = locales.Messages.InvalidShortcutInput
+		app.notify()
+		return true
+	}
+	app.registerShortcut(shortcutText(key), true)
+	return true
+}
+
+// shortcutText writes a normalized shortcut such as "ctrl+alt+c" the way the
+// settings show it and the file keeps it, "Ctrl+Alt+C"; normalizeShortcut reads
+// it back.
+func shortcutText(key string) string {
+	parts := strings.Split(key, "+")
+	for i, part := range parts {
+		if part == "mod" {
+			part = "cmd"
+		}
+		parts[i] = strings.ToUpper(part[:1]) + part[1:]
+	}
+	return strings.Join(parts, "+")
 }
 
 func (app *dipo) registerShortcut(shortcut string, persist bool) {
@@ -500,8 +537,12 @@ func (app *dipo) registerShortcut(shortcut string, persist bool) {
 				}
 				app.shortcutErr = nil
 				if persist {
-					app.state.Shortcut, app.shortcut = shortcut, shortcut
+					app.state.Shortcut = shortcut
 					app.save()
+					// Leaving the recorder shows the saved shortcut in its field.
+					if app.shortcutField != nil {
+						app.shortcutField.Blur()
+					}
 				}
 				app.notify()
 			})

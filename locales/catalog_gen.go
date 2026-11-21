@@ -326,7 +326,7 @@ const (
 	textPickShortcut
 	textAutoCopy
 	textAutoCopyDetail
-	textApply
+	textTypeShortcut
 	textScreenRecording
 	textPermissionChecking
 	textPermissionAllowed
@@ -435,7 +435,7 @@ var keyOfText = [numTexts]string{
 	"pickShortcut",
 	"autoCopy",
 	"autoCopyDetail",
-	"apply",
+	"typeShortcut",
 	"screenRecording",
 	"permissionChecking",
 	"permissionAllowed",
@@ -509,7 +509,7 @@ var textsEn = i18n.NewTexts(""+
 	"Could not find the data folder. Colors stay in memory for this session."+
 	"The existing color file could not be read and is kept. This session uses memory only."+
 	"Approximate sRGB"+
-	"Enter a valid shortcut, such as Ctrl+Alt+C."+
+	"Use Control, Option or Command with a letter, number or comma."+
 	"This shortcut is invalid or already in use. Try another."+
 	"About Dipo"+
 	"Check for Updates…"+
@@ -542,7 +542,7 @@ var textsEn = i18n.NewTexts(""+
 	"Pick shortcut"+
 	"Copy After Picking"+
 	"Uses the format chosen in the main window."+
-	"Apply"+
+	"Type shortcut"+
 	"Screen Recording"+
 	"Checking…"+
 	"Allowed"+
@@ -613,7 +613,7 @@ var textsEn = i18n.NewTexts(""+
 		71,
 		85,
 		16,
-		43,
+		62,
 		56,
 		10,
 		20,
@@ -646,7 +646,7 @@ var textsEn = i18n.NewTexts(""+
 		13,
 		18,
 		42,
-		5,
+		13,
 		16,
 		11,
 		7,
@@ -720,7 +720,7 @@ var textsZhHans = i18n.NewTexts(""+
 	"无法定位本机数据目录，本次只在内存保留颜色。"+
 	"原有颜色文件无法读取，已保留。本次只在内存使用。"+
 	"sRGB 近似值"+
-	"请输入有效的组合键，例如 Ctrl+Alt+C。"+
+	"请同时按下 Control、Option 或 Command，以及一个字母、数字或逗号。"+
 	"快捷键无效或已被占用，请换一个组合。"+
 	"关于 Dipo"+
 	"检查更新…"+
@@ -753,7 +753,7 @@ var textsZhHans = i18n.NewTexts(""+
 	"取色快捷键"+
 	"取色后自动复制"+
 	"使用主窗口中选择的复制格式。"+
-	"应用"+
+	"输入快捷键"+
 	"屏幕录制"+
 	"正在检查…"+
 	"已授权"+
@@ -824,7 +824,7 @@ var textsZhHans = i18n.NewTexts(""+
 		66,
 		72,
 		14,
-		50,
+		86,
 		54,
 		11,
 		15,
@@ -857,7 +857,7 @@ var textsZhHans = i18n.NewTexts(""+
 		15,
 		21,
 		42,
-		6,
+		15,
 		12,
 		15,
 		9,
@@ -931,7 +931,7 @@ var textsZhHant = i18n.NewTexts(""+
 	"無法找到本機資料夾，本次只在記憶體保留顏色。"+
 	"原有顏色檔案無法讀取，已保留。本次只在記憶體使用。"+
 	"sRGB 近似值"+
-	"請輸入有效的組合鍵，例如 Ctrl+Alt+C。"+
+	"請同時按下 Control、Option 或 Command，以及一個字母、數字或逗號。"+
 	"快速鍵無效或已被佔用，請換一個組合。"+
 	"關於 Dipo"+
 	"檢查更新…"+
@@ -964,7 +964,7 @@ var textsZhHant = i18n.NewTexts(""+
 	"取色快速鍵"+
 	"取色後自動複製"+
 	"使用主視窗中選擇的複製格式。"+
-	"套用"+
+	"輸入快速鍵"+
 	"螢幕錄製"+
 	"正在檢查…"+
 	"已授權"+
@@ -1035,7 +1035,7 @@ var textsZhHant = i18n.NewTexts(""+
 		66,
 		75,
 		14,
-		50,
+		86,
 		54,
 		11,
 		15,
@@ -1068,7 +1068,7 @@ var textsZhHant = i18n.NewTexts(""+
 		15,
 		21,
 		42,
-		6,
+		15,
 		12,
 		15,
 		9,
@@ -1642,7 +1642,7 @@ func ApproximateSRGB(cx *core.Scope) string { return For(cx).ApproximateSRGB() }
 // ApproximateSRGB is the package's ApproximateSRGB in the language of msgs.
 func (msgs Messages) ApproximateSRGB() string { return msgs.text(textApproximateSRGB) }
 
-// InvalidShortcutInput says "Enter a valid shortcut, such as Ctrl+Alt+C."
+// InvalidShortcutInput says "Use Control, Option or Command with a letter, number or comma."
 // in the language the app shows under cx.
 func InvalidShortcutInput(cx *core.Scope) string { return For(cx).InvalidShortcutInput() }
 
@@ -1873,12 +1873,12 @@ func AutoCopyDetail(cx *core.Scope) string { return For(cx).AutoCopyDetail() }
 // AutoCopyDetail is the package's AutoCopyDetail in the language of msgs.
 func (msgs Messages) AutoCopyDetail() string { return msgs.text(textAutoCopyDetail) }
 
-// Apply says "Apply"
+// TypeShortcut says "Type shortcut"
 // in the language the app shows under cx.
-func Apply(cx *core.Scope) string { return For(cx).Apply() }
+func TypeShortcut(cx *core.Scope) string { return For(cx).TypeShortcut() }
 
-// Apply is the package's Apply in the language of msgs.
-func (msgs Messages) Apply() string { return msgs.text(textApply) }
+// TypeShortcut is the package's TypeShortcut in the language of msgs.
+func (msgs Messages) TypeShortcut() string { return msgs.text(textTypeShortcut) }
 
 // ScreenRecording says "Screen Recording"
 // in the language the app shows under cx.
