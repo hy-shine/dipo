@@ -14,7 +14,7 @@ updates:
   # Public half of the update signing key; the secret half is NSGO_UPDATES_KEY.
   key: 6eFG+bilHdZXaJ2mrvTf1VSCasRko0VXqzW0waGbLyQ=
 build:
-  targets: [macos_arm64]
+  targets: [macos_arm64, macos_x64]
   output: build/nsgo
   installers: false
   open: false

@@ -1,12 +1,15 @@
-// Command releasedmg makes a release's disk image unsigned and rewrites the
-// appcast entry that updates read, so the entry matches the changed image.
+// Command releasedmg makes each of a release's disk images unsigned and
+// rewrites the appcast entry that updates read, so the entry matches the
+// changed image.
 //
-// nsgo signs the disk image with the app's identity. The identity is
+// nsgo signs a disk image with the app's identity. The identity is
 // self-signed, so macOS warns when the image is opened, although the app
 // inside is signed the same way and gives no warning of its own. An unsigned
 // image opens without that warning, and the app inside keeps its signature,
 // which Sparkle checks on each update. Stripping changes the image's bytes, so
 // the length, SHA-256 and EdDSA signature nsgo wrote for it are made again.
+// There is one image and one appcast for each target, and the appcast's
+// enclosure names its image.
 //
 // The argument is the releases directory nsgo writes. The update secret key is
 // read from NSGO_UPDATES_KEY, as nsgo reads it.
@@ -19,8 +22,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -38,21 +43,75 @@ func main() {
 	}
 }
 
-// run strips the disk image in dir and rewrites the macOS appcast beside it,
-// signing with the secret key keyText holds.
+// run strips every disk image in dir and rewrites the macOS appcast that names
+// it, signing with the secret key keyText holds. It fails when a disk image is
+// named by no appcast, so none is left signed.
 func run(dir, keyText string) error {
 	key, err := secretKey(keyText)
 	if err != nil {
 		return err
 	}
-	image, err := onlyMatch(dir, "*.dmg")
+	feeds, err := filepath.Glob(filepath.Join(dir, "appcast-macos_*.xml"))
 	if err != nil {
 		return err
 	}
-	feedPath, err := onlyMatch(dir, "appcast-macos_*.xml")
+	if len(feeds) == 0 {
+		return fmt.Errorf("no macOS appcast in %s", dir)
+	}
+	stripped := map[string]bool{}
+	for _, feedPath := range feeds {
+		feed, err := os.ReadFile(feedPath)
+		if err != nil {
+			return err
+		}
+		name, err := imageName(feed)
+		if err != nil {
+			return fmt.Errorf("%s: %w", filepath.Base(feedPath), err)
+		}
+		if err := strip(filepath.Join(dir, name), feedPath, feed, key); err != nil {
+			return err
+		}
+		stripped[name] = true
+	}
+	images, err := filepath.Glob(filepath.Join(dir, "*.dmg"))
 	if err != nil {
 		return err
 	}
+	for _, image := range images {
+		if name := filepath.Base(image); !stripped[name] {
+			return fmt.Errorf("no appcast in %s names %s", dir, name)
+		}
+	}
+	return nil
+}
+
+// enclosureTag matches the enclosure element of an appcast entry.
+var enclosureTag = regexp.MustCompile(`<enclosure [^>]*>`)
+
+// imageName returns the file name of the disk image feed's one enclosure points
+// at.
+func imageName(feed []byte) (string, error) {
+	found := enclosureTag.FindAll(feed, -1)
+	if len(found) != 1 {
+		return "", fmt.Errorf("want one enclosure, found %d", len(found))
+	}
+	m := regexp.MustCompile(` url="([^"]*)"`).FindSubmatch(found[0])
+	if m == nil {
+		return "", errors.New("enclosure has no url")
+	}
+	u, err := url.Parse(string(m[1]))
+	if err != nil {
+		return "", fmt.Errorf("enclosure url: %w", err)
+	}
+	name := path.Base(u.Path)
+	if name == "." || name == "/" {
+		return "", fmt.Errorf("enclosure url %q names no file", m[1])
+	}
+	return name, nil
+}
+
+// strip makes image unsigned and rewrites feed, read from feedPath, for it.
+func strip(image, feedPath string, feed []byte, key ed25519.PrivateKey) error {
 	stripped := strings.TrimSuffix(image, ".dmg") + "-stripped.dmg"
 	if out, err := exec.Command("hdiutil", "convert", image, "-format", "ULMO", "-ov", "-o", stripped).CombinedOutput(); err != nil {
 		return fmt.Errorf("hdiutil convert %s: %w: %s", filepath.Base(image), err, out)
@@ -61,10 +120,6 @@ func run(dir, keyText string) error {
 		return err
 	}
 	data, err := os.ReadFile(image)
-	if err != nil {
-		return err
-	}
-	feed, err := os.ReadFile(feedPath)
 	if err != nil {
 		return err
 	}
@@ -91,18 +146,6 @@ func secretKey(text string) (ed25519.PrivateKey, error) {
 	return ed25519.NewKeyFromSeed(seed), nil
 }
 
-// onlyMatch returns the one file in dir whose name matches pattern.
-func onlyMatch(dir, pattern string) (string, error) {
-	matches, err := filepath.Glob(filepath.Join(dir, pattern))
-	if err != nil {
-		return "", err
-	}
-	if len(matches) != 1 {
-		return "", fmt.Errorf("want one %s in %s, found %d", pattern, dir, len(matches))
-	}
-	return matches[0], nil
-}
-
 // checksumLine is the line nsgo writes beside a release file: its SHA-256 and
 // its name.
 func checksumLine(name string, data []byte) string {
@@ -115,9 +158,8 @@ func checksumLine(name string, data []byte) string {
 // fails when feed has no single enclosure or one lacks one of those attributes,
 // since then the entry would not be checked as nsgo meant it.
 func rewriteEnclosure(feed, image []byte, key ed25519.PrivateKey) ([]byte, error) {
-	tag := regexp.MustCompile(`<enclosure [^>]*>`)
 	text := string(feed)
-	found := tag.FindAllStringIndex(text, -1)
+	found := enclosureTag.FindAllStringIndex(text, -1)
 	if len(found) != 1 {
 		return nil, fmt.Errorf("want one enclosure, found %d", len(found))
 	}

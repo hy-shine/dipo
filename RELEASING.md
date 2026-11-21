@@ -23,24 +23,27 @@ Pick the next version by [Semantic Versioning](https://semver.org):
 ## Releasing a version
 
 1. Open a pull request that sets `version:` in `nsgo.yaml` to the new version, and merge it.
-2. On an up-to-date `master`, check the version and tag it:
+2. Write the release notes in Markdown to a file outside the repository, such as `notes.md`: what is new, what changed, and the requirements. The tag's message holds them, and the release shows them as written.
+3. On an up-to-date `master`, check the version and tag it with the notes:
 
    ```sh
    git switch master && git pull --ff-only
    make -s version
-   git tag -a vX.Y.Z -m "Dipo X.Y.Z"
+   git tag -a vX.Y.Z --cleanup=verbatim -F notes.md
    git push origin vX.Y.Z
    ```
 
-3. Wait for the Release workflow in the Actions tab. It runs CI, builds the release with `make release`, and creates a draft release with three files: the disk image, its `.sha256` file and the appcast.
-4. Check the draft before publishing it:
+   `--cleanup=verbatim` keeps the notes' `##` headings, which `git tag` otherwise drops as comment lines. Check the message with `git tag --list vX.Y.Z --format='%(contents)'` before pushing.
+4. Wait for the Release workflow in the Actions tab. It runs CI, builds the release with `make release`, and creates a draft release with three files: the disk image, its `.sha256` file and the appcast. It refuses a tag without a message, which would otherwise give the release the commit's message as its notes.
+5. Check the draft before publishing it:
+   - The notes are the tag's message.
    - `gh release view vX.Y.Z` lists exactly those three files.
    - Download the disk image and run `shasum -a 256 -c` against its `.sha256` file.
    - Open the disk image. macOS should not warn about it. The app still needs "Open Anyway" on its first launch, as the README says, because Dipo is not notarized.
-5. Publish the draft with `gh release edit vX.Y.Z --draft=false`. The update feed reads `releases/latest/download/`, so the new version reaches the app only after this step.
-6. Test the update: on a Mac with the previous release installed, choose **Settings → About → Check Now**, and confirm the app updates and keeps its Screen Recording permission. This test cannot run before publishing, because the feed reads only published releases.
+6. Publish the draft with `gh release edit vX.Y.Z --draft=false`. The update feed reads `releases/latest/download/`, so the new version reaches the app only after this step.
+7. Test the update: on a Mac with the previous release installed, choose **Settings → About → Check Now**, and confirm the app updates and keeps its Screen Recording permission. This test cannot run before publishing, because the feed reads only published releases.
 
-If step 6 fails, delete the release and the tag with `gh release delete vX.Y.Z --yes --cleanup-tag`. The feed falls back to the previous release. Fix the problem on a branch, then release a higher version. Do not reuse a tag.
+If step 7 fails, delete the release and the tag with `gh release delete vX.Y.Z --yes --cleanup-tag`. The feed falls back to the previous release. Fix the problem on a branch, then release a higher version. Do not reuse a tag.
 
 ## Before tagging
 
