@@ -66,12 +66,6 @@ make check-ui
 
 `make check` 运行原生取色器检查、`go vet` 和 Go 测试。`make check-ui` 运行 NSGo 的 macOS 界面测试，截图保存在 `.nsgo/test/screenshots/macos/`。
 
-每次推送和每个拉取请求都会运行 `.github/workflows/ci.yml`：格式检查、`go mod tidy`、工作流检查、`nsgo check`、`go vet`、取色器编译和 Go 测试。它不打包。
-
-### 发布
-
-只有推送版本标签才会打包。在 `nsgo.yaml` 中设置 `version`，合并到 `master`，再推送标签 `v<版本>`。`.github/workflows/release.yml` 会检查标签位于 `master` 且与 `nsgo.yaml` 一致，运行 CI 检查和 `make release`，并把磁盘映像和更新源（`appcast-macos_arm64.xml`）发布为 GitHub Release，**立即检查** 读取的就是它。需要三个仓库 secret：`NSGO_UPDATES_KEY`（`go tool nsgo keygen` 的私钥，公钥是 `nsgo.yaml` 的 `updates.key`），以及 `BUILD_CERTIFICATE_BASE64` 和 `P12_PASSWORD`（base64 编码的 `.p12` 签名身份及其密码），外加仓库变量 `CODESIGN_IDENTITY`，即该身份的名称。设置了 `NSGO_UPDATES_KEY` 和 `CODESIGN_IDENTITY` 时，也可用 `make release` 手动执行同样的构建；它不接受 ad hoc 身份。
-
 ## 项目结构
 
 | 路径 | 用途 |

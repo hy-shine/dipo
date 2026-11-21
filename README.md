@@ -68,12 +68,6 @@ make check-ui
 
 `make check` runs the native picker checks, `go vet`, and Go tests. `make check-ui` runs the NSGo macOS interface tests and saves screenshots under `.nsgo/test/screenshots/macos/`.
 
-Every push and pull request runs `.github/workflows/ci.yml`: formatting, `go mod tidy`, workflow lint, `nsgo check`, `go vet`, a build of the picker, and the Go tests. It packages nothing.
-
-### Releasing
-
-Packaging runs only for a version tag. Set `version` in `nsgo.yaml`, merge to `master`, then push the tag `v<version>`. `.github/workflows/release.yml` checks that the tag is on `master` and matches `nsgo.yaml`, runs the CI checks, runs `make release`, and publishes the disk image and the update feed (`appcast-macos_arm64.xml`) as a GitHub release, which **Check Now** reads. It needs three repository secrets: `NSGO_UPDATES_KEY` (the secret half of `go tool nsgo keygen`; the public half is `updates.key` in `nsgo.yaml`), and `BUILD_CERTIFICATE_BASE64` and `P12_PASSWORD` (the signing identity as a base64-encoded `.p12`, and its password), plus the repository variable `CODESIGN_IDENTITY`, the identity's name. `make release` runs the same build by hand when `NSGO_UPDATES_KEY` and `CODESIGN_IDENTITY` are set; it refuses an ad hoc identity.
-
 ## Project layout
 
 | Path | Purpose |
