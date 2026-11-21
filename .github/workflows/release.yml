@@ -1,0 +1,129 @@
+name: Release
+
+# Builds and publishes a GitHub release when a version tag is pushed, and at no
+# other time. To release: set nsgo.yaml's version, merge that to master, then
+# push the tag v<version> on master's commit. This workflow refuses a tag that
+# is not on master or does not match nsgo.yaml, runs ci.yml, builds the signed
+# disk image and the update appcast with `make release`, and attaches them to a
+# release, which the app's updater reads from /releases/latest/download/.
+#
+# Secrets (Settings > Secrets and variables > Actions):
+#   NSGO_UPDATES_KEY          the secret half of `nsgo keygen`, which signs updates
+#   BUILD_CERTIFICATE_BASE64  the .p12 of the code signing identity, base64-encoded
+#   P12_PASSWORD              the password of that .p12
+# Variable:
+#   CODESIGN_IDENTITY         the name of the identity in that .p12
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+*"
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Build and publish
+    needs: check
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    env:
+      CODESIGN_IDENTITY: ${{ vars.CODESIGN_IDENTITY }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check the tag
+        run: |
+          set -euo pipefail
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+            echo "::error::$GITHUB_REF_NAME points at $GITHUB_SHA, which is not on master. Tag a commit of master."
+            exit 1
+          fi
+          version=$(make -s version)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::nsgo.yaml has version $version, not ${GITHUB_REF_NAME#v}. Set it, merge it to master and tag again."
+            exit 1
+          fi
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      # GitHub's "Installing an Apple certificate on macOS runners" steps, with
+      # a keychain password made for this run, since the runner is discarded
+      # after it. A self-signed identity is not trusted from a .p12 alone, and
+      # codesign does not find an untrusted one, so the certificate is also
+      # trusted for code signing.
+      - name: Install the signing certificate
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CODESIGN_IDENTITY" ]; then
+            echo "::error::Set the repository variable CODESIGN_IDENTITY to the identity's name."
+            exit 1
+          fi
+          certificate="$RUNNER_TEMP/certificate.p12"
+          pem="$RUNNER_TEMP/certificate.pem"
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password=$(uuidgen)
+          echo "::add-mask::$keychain_password"
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$certificate"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          security import "$certificate" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+          security set-key-partition-list -S apple-tool:,apple: -k "$keychain_password" "$keychain"
+          security list-keychain -d user -s "$keychain"
+          security find-certificate -c "$CODESIGN_IDENTITY" -p "$keychain" > "$pem"
+          sudo security add-trusted-cert -d -r trustRoot -p codeSign -k "$keychain" "$pem"
+          security find-identity -v -p codesigning "$keychain" | grep -F "$CODESIGN_IDENTITY"
+      - name: Build the release
+        env:
+          NSGO_UPDATES_KEY: ${{ secrets.NSGO_UPDATES_KEY }}
+        run: make release
+      - name: Check the build
+        run: |
+          set -euo pipefail
+          version=$(make -s version)
+          releases=build/release/releases
+          ls -l "$releases"
+          test -f "$releases/appcast-macos_arm64.xml"
+          grep -F "<sparkle:version>$version</sparkle:version>" "$releases/appcast-macos_arm64.xml"
+          app=$(ls -d build/release/Dipo-*/Dipo.app)
+          codesign --verify --deep --strict "$app"
+          # Screen Recording grants follow the signing requirement. One tied to
+          # the certificate survives an update; an ad hoc one (a cdhash) does
+          # not. The picker helper holds the grant, so it is checked as well.
+          for binary in "$app" "$app/Contents/Resources/dipo-sampler"; do
+            requirement=$(codesign -d -r- "$binary" 2>&1)
+            case "$requirement" in
+              *"certificate leaf"*) ;;
+              *)
+                echo "::error::$binary is not signed with a certificate-based requirement: $requirement"
+                exit 1
+                ;;
+            esac
+          done
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          args=(--verify-tag --title "Dipo ${GITHUB_REF_NAME#v}" --generate-notes)
+          case "$GITHUB_REF_NAME" in *-*) args+=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" "${args[@]}" build/release/releases/*
