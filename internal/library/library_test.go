@@ -58,6 +58,23 @@ func TestPersistence(t *testing.T) {
 	}
 }
 
+func TestDisplayP3FormatsPersist(t *testing.T) {
+	for _, format := range []colour.Format{colour.P3HEX, colour.P3} {
+		path := filepath.Join(t.TempDir(), "colors.json")
+		store, state, err := library.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		state.Format = format
+		if err := store.Save(state); err != nil {
+			t.Fatalf("save %s: %v", format, err)
+		}
+		if _, loaded, err := library.Open(path); err != nil || loaded.Format != format {
+			t.Fatalf("reloaded format = %s, %v; want %s", loaded.Format, err, format)
+		}
+	}
+}
+
 func TestThemeDefaultsAndPersists(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "Dipo", "colors.json")
 	store, state, err := library.Open(path)

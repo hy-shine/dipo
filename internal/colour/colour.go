@@ -19,10 +19,20 @@ const (
 	HEX Format = "HEX"
 	RGB Format = "RGB"
 	HSL Format = "HSL"
+	// P3HEX is HEX in Display P3, as design tools read it in a Display P3
+	// document.
+	P3HEX Format = "P3HEX"
+	// P3 is CSS color(display-p3 r g b).
+	P3 Format = "P3"
 )
 
 func (format Format) Valid() bool {
-	return format == HEX || format == RGB || format == HSL
+	return format == HEX || format == RGB || format == HSL || format.DisplayP3()
+}
+
+// DisplayP3 reports whether format writes Display P3 rather than sRGB.
+func (format Format) DisplayP3() bool {
+	return format == P3HEX || format == P3
 }
 
 func Opaque(red, green, blue uint8) Color {
@@ -37,10 +47,10 @@ func (value Color) Hex() string {
 }
 
 func (value Color) Text(format Format) string {
-	alpha := ""
-	if value.A != 255 {
-		alpha = " / " + decimal(float64(value.A)/255*100) + "%"
+	if format.DisplayP3() {
+		return value.SRGB().Text(format, value.A)
 	}
+	alpha := alphaSuffix(value.A)
 	switch format {
 	case RGB:
 		return fmt.Sprintf("rgb(%d %d %d%s)", value.R, value.G, value.B, alpha)
@@ -50,6 +60,15 @@ func (value Color) Text(format Format) string {
 	default:
 		return value.Hex()
 	}
+}
+
+// alphaSuffix is the " / 50%" a CSS color function writes for a translucent
+// color, and nothing for an opaque one.
+func alphaSuffix(alpha uint8) string {
+	if alpha == 255 {
+		return ""
+	}
+	return " / " + decimal(float64(alpha)/255*100) + "%"
 }
 
 func decimal(value float64) string {

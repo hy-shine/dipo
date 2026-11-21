@@ -25,20 +25,9 @@ type sample struct {
 	Y      float64 `json:"y"`
 }
 
-func (picked sample) channels() (uint8, uint8, uint8) {
-	channel := func(value float64) uint8 {
-		return uint8(math.Round(max(0, min(1, value)) * 255))
-	}
-	return channel(picked.Red), channel(picked.Green), channel(picked.Blue)
-}
-
-func (picked sample) color() colour.Color {
-	red, green, blue := picked.channels()
-	return colour.Opaque(red, green, blue)
-}
-
-func (picked sample) outsideSRGB() bool {
-	return picked.Red < 0 || picked.Red > 1 || picked.Green < 0 || picked.Green > 1 || picked.Blue < 0 || picked.Blue > 1
+// measured is the picked color as the screen showed it, in extended sRGB.
+func (picked sample) measured() colour.SRGB {
+	return colour.SRGB{R: picked.Red, G: picked.Green, B: picked.Blue}
 }
 
 func sampleScreen(ctx context.Context, hint string) (sample, error) {

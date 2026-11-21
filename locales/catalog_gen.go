@@ -294,6 +294,7 @@ const (
 	textDataFolderUnavailable
 	textColorFileUnreadable
 	textApproximateSRGB
+	textApproximateDisplayP3
 	textInvalidShortcutInput
 	textShortcutUnavailable
 	textAboutDipo
@@ -405,6 +406,7 @@ var keyOfText = [numTexts]string{
 	"dataFolderUnavailable",
 	"colorFileUnreadable",
 	"approximateSRGB",
+	"approximateDisplayP3",
 	"invalidShortcutInput",
 	"shortcutUnavailable",
 	"aboutDipo",
@@ -514,6 +516,7 @@ var textsEn = i18n.NewTexts(""+
 	"Could not find the data folder. Colors stay in memory for this session."+
 	"The existing color file could not be read and is kept. This session uses memory only."+
 	"Approximate sRGB"+
+	"Approximate Display P3"+
 	"Use Control, Option or Command with a letter, number or comma."+
 	"This shortcut is invalid or already in use. Try another."+
 	"About Dipo"+
@@ -620,6 +623,7 @@ var textsEn = i18n.NewTexts(""+
 		71,
 		85,
 		16,
+		22,
 		62,
 		56,
 		10,
@@ -729,6 +733,7 @@ var textsZhHans = i18n.NewTexts(""+
 	"无法定位本机数据目录，本次只在内存保留颜色。"+
 	"原有颜色文件无法读取，已保留。本次只在内存使用。"+
 	"sRGB 近似值"+
+	"Display P3 近似值"+
 	"请同时按下 Control、Option 或 Command，以及一个字母、数字或逗号。"+
 	"快捷键无效或已被占用，请换一个组合。"+
 	"关于 Dipo"+
@@ -835,6 +840,7 @@ var textsZhHans = i18n.NewTexts(""+
 		66,
 		72,
 		14,
+		20,
 		86,
 		54,
 		11,
@@ -944,6 +950,7 @@ var textsZhHant = i18n.NewTexts(""+
 	"無法找到本機資料夾，本次只在記憶體保留顏色。"+
 	"原有顏色檔案無法讀取，已保留。本次只在記憶體使用。"+
 	"sRGB 近似值"+
+	"Display P3 近似值"+
 	"請同時按下 Control、Option 或 Command，以及一個字母、數字或逗號。"+
 	"快速鍵無效或已被佔用，請換一個組合。"+
 	"關於 Dipo"+
@@ -1050,6 +1057,7 @@ var textsZhHant = i18n.NewTexts(""+
 		66,
 		75,
 		14,
+		20,
 		86,
 		54,
 		11,
@@ -1664,6 +1672,13 @@ func ApproximateSRGB(cx *core.Scope) string { return For(cx).ApproximateSRGB() }
 
 // ApproximateSRGB is the package's ApproximateSRGB in the language of msgs.
 func (msgs Messages) ApproximateSRGB() string { return msgs.text(textApproximateSRGB) }
+
+// ApproximateDisplayP3 says "Approximate Display P3"
+// in the language the app shows under cx.
+func ApproximateDisplayP3(cx *core.Scope) string { return For(cx).ApproximateDisplayP3() }
+
+// ApproximateDisplayP3 is the package's ApproximateDisplayP3 in the language of msgs.
+func (msgs Messages) ApproximateDisplayP3() string { return msgs.text(textApproximateDisplayP3) }
 
 // InvalidShortcutInput says "Use Control, Option or Command with a letter, number or comma."
 // in the language the app shows under cx.

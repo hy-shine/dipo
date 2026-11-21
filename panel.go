@@ -220,11 +220,12 @@ func (app *dipo) outputView(cx *core.Scope) core.Node {
 	}
 	return core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
 		muted(cx, msgs.CopyAs(), 12),
-		ui.Select[colour.Format]{TestID: "copy-format", Label: msgs.CopyFormat(), Style: core.Style{Width: core.Pt(140), Height: core.Pt(28)}, Options: []ui.Option[colour.Format]{{Value: colour.HEX, Label: "HEX"}, {Value: colour.RGB, Label: "CSS RGB"}, {Value: colour.HSL, Label: "CSS HSL"}}, Value: func() colour.Format { app.observe(); return app.state.Format }, OnChange: func(format colour.Format) { app.state.Format = format; app.save() }},
+		ui.Select[colour.Format]{TestID: "copy-format", Label: msgs.CopyFormat(), Style: core.Style{Width: core.Pt(140), Height: core.Pt(28)}, Options: []ui.Option[colour.Format]{{Value: colour.HEX, Label: "HEX"}, {Value: colour.RGB, Label: "CSS RGB"}, {Value: colour.HSL, Label: "CSS HSL"}, {Value: colour.P3HEX, Label: "P3 HEX"}, {Value: colour.P3, Label: "CSS P3"}}, Value: func() colour.Format { app.observe(); return app.state.Format }, OnChange: func(format colour.Format) { app.state.Format = format; app.save() }},
 		// The text to copy shows beside the format, except for HEX, which the color field above already shows.
+		// Two lines fit in the row's height and hold the longest, color(display-p3 …) with an alpha.
 		core.View{Style: core.Style{FlexGrow: 1, FlexShrink: 1, Width: core.Pt(0)}, Children: []core.Node{
 			core.Show{When: func() bool { app.observe(); return app.state.Format != colour.HEX }, Then: func(cx *core.Scope) core.Node {
-				return core.Text{TestID: "copy-preview", Label: msgs.CopyPreview(), MaxLines: 1, Style: core.Style{FontFamily: core.FontMonospace, FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: ui.ColorsOf(cx).Muted()} }, Selectable: core.SelectableOn, ContentFunc: func() string { app.observe(); return app.current.Text(app.state.Format) }}
+				return core.Text{TestID: "copy-preview", Label: msgs.CopyPreview(), MaxLines: 2, Style: core.Style{FontFamily: core.FontMonospace, FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: ui.ColorsOf(cx).Muted()} }, Selectable: core.SelectableOn, ContentFunc: func() string { app.observe(); return app.colorText(app.current, app.state.Format) }}
 			}},
 		}},
 		base.Button{TestID: "copy-color", Label: msgs.CopyColor(), Style: core.Style{Width: core.Pt(66), Height: core.Pt(26), AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter, CornerRadius: 7, FontSize: 12, FontWeight: 500}, StyleFunc: func() core.Style {
