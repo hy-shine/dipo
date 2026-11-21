@@ -507,6 +507,52 @@ func TestSettingsMenuBarSwitchIsRemembered(test *testing.T) {
 	}
 }
 
+// recentSubmenu is the menu bar icon's Recent Colors submenu as the icon would
+// show it now.
+func recentSubmenu(application *nsgotest.App, controller *dipo) (items []desktop.MenuItem) {
+	application.Post(func() {
+		msgs := controller.messages()
+		for _, item := range controller.trayOptions().Menu() {
+			if item.Label == msgs.RecentColors() {
+				items = item.Items
+			}
+		}
+	})
+	application.Settle()
+	return items
+}
+
+func TestMenuBarIconListsRecentColorsAndCopiesTheChosenOne(test *testing.T) {
+	var copied []string
+	application, controller := startPanel(test, func(app *dipo) {
+		app.state.Recent = []colour.Color{colour.Opaque(255, 0, 0), colour.Opaque(0, 0, 255)}
+		app.writeClipboard = func(text string) error { copied = append(copied, text); return nil }
+	})
+	items := recentSubmenu(application, controller)
+	if len(items) != 2 || items[0].Label != "#FF0000" || items[1].Label != "#0000FF" {
+		test.Fatalf("the recent colors submenu is %+v; want #FF0000 then #0000FF", items)
+	}
+	application.Post(items[1].OnSelect)
+	application.Settle()
+	if !slices.Equal(copied, []string{"#0000FF"}) {
+		test.Fatalf("choosing the second color copied %q; want #0000FF", copied)
+	}
+	application.Post(func() { controller.state.Format = colour.RGB; controller.state.Recent = controller.state.Recent[:1] })
+	application.Settle()
+	items = recentSubmenu(application, controller)
+	if len(items) != 1 || items[0].Label != colour.Opaque(255, 0, 0).Text(colour.RGB) {
+		test.Fatalf("the submenu is %+v after the format and the list changed; want one color in the new format", items)
+	}
+}
+
+func TestMenuBarIconWithoutRecentColorsShowsADisabledNote(test *testing.T) {
+	application, controller := startPanel(test, nil)
+	items := recentSubmenu(application, controller)
+	if len(items) != 1 || !items[0].Disabled || items[0].OnSelect != nil || items[0].Label != locales.In("zh-Hans").NoRecentColors() {
+		test.Fatalf("the empty submenu is %+v; want one disabled note", items)
+	}
+}
+
 func TestSettingsDockSwitchIsRemembered(test *testing.T) {
 	application, controller := startSettings(test, nil)
 	application.Press("id:show-in-dock")

@@ -665,6 +665,7 @@ func (app *dipo) trayOptions() desktop.TrayOptions {
 			}
 			return []desktop.MenuItem{
 				{Label: msgs.PickColor(), Shortcut: shortcut, Disabled: app.sampling, OnSelect: app.pick},
+				app.recentMenu(msgs),
 				{Label: msgs.ShowMainWindow(), OnSelect: app.show},
 				{Separator: true},
 				{Label: msgs.SettingsMenu(), OnSelect: app.showSettings},
@@ -672,6 +673,20 @@ func (app *dipo) trayOptions() desktop.TrayOptions {
 			}
 		},
 	}
+}
+
+// recentMenu is the menu bar icon's submenu of recent colors, written in the
+// copy format; choosing one copies it. The menu is made each time it opens, so
+// it follows the list.
+func (app *dipo) recentMenu(msgs locales.Messages) desktop.MenuItem {
+	items := make([]desktop.MenuItem, 0, len(app.state.Recent))
+	for _, value := range app.state.Recent {
+		items = append(items, desktop.MenuItem{Label: value.Text(app.state.Format), OnSelect: func() { app.copyColor(value) }})
+	}
+	if len(items) == 0 {
+		items = append(items, desktop.MenuItem{Label: msgs.NoRecentColors(), Disabled: true})
+	}
+	return desktop.MenuItem{Label: msgs.RecentColors(), Items: items}
 }
 
 func (app *dipo) ready(ctx context.Context) {
