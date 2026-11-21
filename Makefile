@@ -30,11 +30,14 @@ build: resources/dipo-sampler
 # would ask for Screen Recording again. nsgo also writes LSMinimumSystemVersion
 # 11.0, which the Info.plist patch in build cannot reach, so the disk image
 # does not hold back macOS 11 to 13, where the picker does not work.
+# releasedmg then strips the disk image's signature, which macOS warns about
+# when the image opens, and rewrites the appcast entry for the changed image.
 release: resources/dipo-sampler
 	@test -n "$$NSGO_UPDATES_KEY" || { echo "NSGO_UPDATES_KEY is not set; nsgo would write no appcast" >&2; exit 1; }
 	@{ test -n "$(CODESIGN_IDENTITY)" && test "$(CODESIGN_IDENTITY)" != "-"; } || { echo "CODESIGN_IDENTITY must name a stable code signing identity, not ad hoc" >&2; exit 1; }
 	codesign --force --sign "$(CODESIGN_IDENTITY)" resources/dipo-sampler
 	CGO_ENABLED=0 go tool nsgo build -target $(TARGET) -installers=true -sign "$(CODESIGN_IDENTITY)" -output build/release
+	CGO_ENABLED=0 go run ./cmd/releasedmg build/release/releases
 
 # version prints nsgo.yaml's version, for release.yml to match against the tag.
 version:
