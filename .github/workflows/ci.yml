@@ -1,0 +1,76 @@
+name: CI
+
+# Checks every commit pushed to any branch and every pull request. Nothing is
+# built for release here: release.yml does that, only for a version tag, and
+# calls this workflow first. A tag push does not start this workflow itself.
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
+
+# One run per commit and event, never cancelled, so each commit gets its own
+# result.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # What needs no Mac runs on Linux, which costs a tenth of a Mac's minutes.
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Check formatting
+        run: |
+          unformatted=$(git ls-files -z -- '*.go' | xargs -0 -r gofmt -l)
+          if [ -n "$unformatted" ]; then
+            printf '%s\n' "$unformatted"
+            exit 1
+          fi
+      - name: Check go.mod and go.sum are tidy
+        run: go mod tidy -diff
+      - name: Lint the workflows
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.7 -shellcheck=
+
+  # The app and its Swift picker build only on a Mac. The picker's own
+  # self-test (make check-native) reads the screen, which a runner has no
+  # permission for, so only its build is checked here.
+  test:
+    name: Test
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      # Fails when locales/catalog_gen.go is out of date with the yaml files.
+      - name: Check the message catalogs and vet the app
+        run: go tool nsgo check -target macos_arm64
+      - name: Vet
+        run: go vet ./...
+      - name: Build the picker
+        run: make resources/dipo-sampler
+      - name: Test
+        run: go test ./...
