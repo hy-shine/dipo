@@ -1,11 +1,14 @@
 name: Release
 
-# Builds and publishes a GitHub release when a version tag is pushed, and at no
-# other time. To release: set nsgo.yaml's version, merge that to master, then
-# push the tag v<version> on master's commit. This workflow refuses a tag that
-# is not on master or does not match nsgo.yaml, runs ci.yml, builds the signed
-# disk image and the update appcast with `make release`, and attaches them to a
-# release, which the app's updater reads from /releases/latest/download/.
+# Builds a GitHub release when a version tag is pushed, and at no other time.
+# To release: set nsgo.yaml's version, merge that to master, then push the tag
+# v<version> on master's commit. This workflow refuses a tag that is not on
+# master or does not match nsgo.yaml, runs ci.yml, builds the signed disk image
+# and the update appcast with `make release`, and creates a draft release with
+# them. Nothing reaches the app's updater, which reads
+# /releases/latest/download/, until the draft is published: download the disk
+# image and check it, then run `gh release edit v<version> --draft=false`, or
+# delete the draft and the tag.
 #
 # Secrets (Settings > Secrets and variables > Actions):
 #   NSGO_UPDATES_KEY          the secret half of `nsgo keygen`, which signs updates
@@ -102,8 +105,15 @@ jobs:
           version=$(make -s version)
           releases=build/release/releases
           ls -l "$releases"
-          test -f "$releases/appcast-macos_arm64.xml"
+          test -s "$releases/appcast-macos_arm64.xml"
           grep -F "<sparkle:version>$version</sparkle:version>" "$releases/appcast-macos_arm64.xml"
+          dmgs=("$releases"/*.dmg)
+          if [ "${#dmgs[@]}" -ne 1 ] || [ ! -s "${dmgs[0]}" ]; then
+            echo "::error::Expected one non-empty disk image in $releases"
+            exit 1
+          fi
+          dmg=$(basename "${dmgs[0]}")
+          (cd "$releases" && shasum -a 256 "$dmg" > "$dmg.sha256")
           app=$(ls -d build/release/Dipo-*/Dipo.app)
           codesign --verify --deep --strict "$app"
           # Screen Recording grants follow the signing requirement. One tied to
@@ -119,11 +129,11 @@ jobs:
                 ;;
             esac
           done
-      - name: Publish the release
+      - name: Create the draft release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          args=(--verify-tag --title "Dipo ${GITHUB_REF_NAME#v}" --generate-notes)
+          args=(--draft --verify-tag --title "Dipo ${GITHUB_REF_NAME#v}" --generate-notes)
           case "$GITHUB_REF_NAME" in *-*) args+=(--prerelease) ;; esac
           gh release create "$GITHUB_REF_NAME" "${args[@]}" build/release/releases/*
