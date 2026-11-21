@@ -151,14 +151,14 @@ func TestConfirmedPickAndHistoryReuse(test *testing.T) {
 	if controller.current != value || application.Clipboard != value.Hex() || len(controller.state.Recent) != 1 {
 		test.Fatalf("history reuse: current %v, clipboard %q, recent %v", controller.current, application.Clipboard, controller.state.Recent)
 	}
-	application.Post(func() { controller.acceptPick(colour.Opaque(255, 255, 255)) })
+	application.Post(func() { controller.acceptPick(colour.Opaque(255, 255, 255).SRGB()) })
 	application.Settle()
 	if application.Clipboard != "#FFFFFF" || len(controller.state.Recent) != 2 {
 		test.Fatalf("confirmed pick: clipboard %q, recent %v", application.Clipboard, controller.state.Recent)
 	}
 	application.Post(func() {
 		controller.writeClipboard = func(string) error { return errors.New("clipboard unavailable") }
-		controller.acceptPick(colour.Opaque(0, 0, 0))
+		controller.acceptPick(colour.Opaque(0, 0, 0).SRGB())
 	})
 	application.Settle()
 	if controller.status.in(controller.messages()) != "复制失败，请重试。" || len(controller.state.Recent) != 3 || application.Clipboard != "#FFFFFF" {
@@ -248,15 +248,17 @@ func TestPanelRestoreStripOnSwatch(test *testing.T) {
 	}
 }
 
-func TestPanelCopyPreviewOnlyForCSSFormats(test *testing.T) {
+func TestPanelCopyPreviewForFormatsOtherThanHEX(test *testing.T) {
 	application, controller := startPanel(test, nil)
 	if application.Exists("id:copy-preview") {
 		test.Fatal("HEX shows a preview that repeats the color field")
 	}
-	application.Press("id:copy-format")
-	application.Press("id:copy-format-1")
-	if got, want := application.Find("id:copy-preview").Text, controller.current.Text(colour.RGB); got != want {
-		test.Fatalf("copy preview = %q; want %q", got, want)
+	for option, format := range map[string]colour.Format{"id:copy-format-1": colour.RGB, "id:copy-format-3": colour.P3HEX, "id:copy-format-4": colour.P3} {
+		application.Press("id:copy-format")
+		application.Press(option)
+		if got, want := application.Find("id:copy-preview").Text, controller.current.Text(format); controller.state.Format != format || got != want {
+			test.Fatalf("%s: format %s, copy preview = %q; want %s, %q", option, controller.state.Format, got, format, want)
+		}
 	}
 	application.Press("id:copy-format")
 	application.Press("id:copy-format-0")

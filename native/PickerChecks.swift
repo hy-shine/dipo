@@ -6,7 +6,7 @@ func runPickerChecks(outputDirectory: String?) throws {
         guard condition() else { throw NSError(domain: "DipoPickerChecks", code: 1, userInfo: [NSLocalizedDescriptionKey: message]) }
         checks += 1
     }
-    func image(width: Int, height: Int, pixel: (Int, Int) -> Pixel) throws -> CGImage {
+    func image(width: Int, height: Int, space spaceName: CFString = CGColorSpace.sRGB, pixel: (Int, Int) -> Pixel) throws -> CGImage {
         var bytes = Data(count: width * height * 4)
         for row in 0..<height {
             for column in 0..<width {
@@ -18,7 +18,7 @@ func runPickerChecks(outputDirectory: String?) throws {
                 bytes[offset + 3] = 255
             }
         }
-        guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+        guard let space = CGColorSpace(name: spaceName),
               let provider = CGDataProvider(data: bytes as CFData),
               let result = CGImage(width: width, height: height, bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: width * 4, space: space, bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue), provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
         else { throw PickerFailure.bitmap }
@@ -33,9 +33,29 @@ func runPickerChecks(outputDirectory: String?) throws {
         return Pixel(red: UInt8(column * 20), green: UInt8(row * 30), blue: 27)
     }
     let display = try FrozenDisplay(frame: CGRect(x: -4, y: 6, width: 4, height: 2), image: testImage)
-    try expect(display.pixel(at: PixelPosition(column: 0, row: 0)) == red, "top image row must remain red")
-    try expect(display.pixel(at: PixelPosition(column: 7, row: 3)) == blue, "bottom image row must remain blue")
-    try expect(display.pixel(at: PixelPosition(column: 3, row: 1)) == Pixel(red: 60, green: 30, blue: 27), "sRGB channels must not drift or swap")
+    func color(_ display: FrozenDisplay, _ column: Int, _ row: Int) throws -> ScreenColor {
+        try display.color(at: PixelPosition(column: column, row: row))
+    }
+    func uniform(_ value: Pixel, in spaceName: CFString) throws -> ScreenColor {
+        try color(FrozenDisplay(frame: CGRect(x: 0, y: 0, width: 2, height: 2), image: image(width: 2, height: 2, space: spaceName) { _, _ in value }), 1, 1)
+    }
+
+    let topLeft = try color(display, 0, 0), bottomRight = try color(display, 7, 3), inner = try color(display, 3, 1)
+    try expect(topLeft.pixel == red, "top image row must remain red")
+    try expect(bottomRight.pixel == blue, "bottom image row must remain blue")
+    try expect(inner.pixel == Pixel(red: 60, green: 30, blue: 27), "sRGB channels must not drift or swap")
+    try expect(inner.insideSRGB, "an sRGB pixel is inside sRGB")
+    let corner = try display.colors(around: PixelPosition(column: 0, row: 0), radius: 1).map(\.pixel)
+    try expect(corner == [red, red, red, red, red, red, Pixel(red: 0, green: 30, blue: 27), Pixel(red: 0, green: 30, blue: 27), Pixel(red: 20, green: 30, blue: 27)], "loupe colors run row by row and clamp at the edge; got \(corner.map(\.hex))")
+    let loupe = try display.colors(around: PixelPosition(column: 7, row: 3), radius: 5)
+    try expect(loupe.count == 121 && loupe[60].pixel == blue, "loupe colors fill the square at the corner")
+
+    // A Display P3 green, which sRGB cannot show, keeps its components past 0 and 1.
+    let p3Green = try uniform(Pixel(red: 0, green: 255, blue: 0), in: CGColorSpace.displayP3)
+    try expect(abs(p3Green.red + 0.5116) < 0.002 && abs(p3Green.green - 1.0183) < 0.002 && abs(p3Green.blue + 0.3107) < 0.002, "Display P3 green reads as extended sRGB; got \(p3Green)")
+    try expect(!p3Green.insideSRGB && p3Green.pixel.hex == "#00FF00", "Display P3 green is outside sRGB and clamps to #00FF00")
+    let p3White = try uniform(Pixel(red: 255, green: 255, blue: 255), in: CGColorSpace.displayP3)
+    try expect(p3White.insideSRGB && p3White.pixel.hex == "#FFFFFF", "Display P3 white is sRGB white; got \(p3White)")
     try expect(display.position(at: CGPoint(x: -4, y: 8)) == PixelPosition(column: 0, row: 0), "negative screen origin/top edge")
     try expect(display.position(at: CGPoint(x: 0, y: 6)) == PixelPosition(column: 7, row: 3), "bottom/right bounds clamp")
     try expect(display.position(at: CGPoint(x: -3.25, y: 7.25)) == PixelPosition(column: 1, row: 1), "Retina half-point position")
@@ -52,16 +72,18 @@ func runPickerChecks(outputDirectory: String?) throws {
 
     let flatImage = try image(width: 16, height: 16) { _, _ in Pixel(red: 19, green: 22, blue: 27) }
     let flat = try FrozenDisplay(frame: CGRect(x: 0, y: 0, width: 8, height: 8), image: flatImage)
-    try expect(flat.pixel(at: PixelPosition(column: 8, row: 8)).hex == "#13161B", "known dark sRGB value survives normalization")
-    try expect(flat.pixel(at: PixelPosition(column: -5, row: -5)).hex == "#13161B", "loupe pixels clamp outside capture")
+    let flatInside = try color(flat, 8, 8), flatOutside = try color(flat, -5, -5)
+    try expect(flatInside.pixel.hex == "#13161B", "known dark sRGB value survives normalization")
+    try expect(flatOutside.pixel.hex == "#13161B", "loupe pixels clamp outside capture")
 
     let renderImage = try image(width: 320, height: 240) { _, row in row < 120 ? red : blue }
     let renderDisplay = try FrozenDisplay(frame: CGRect(x: 0, y: 0, width: 320, height: 240), image: renderImage)
     let renderView = PickerView(snapshot: renderDisplay)
     let renderedImage = try renderPickerView(renderView, scale: 1)
     let rendered = try FrozenDisplay(frame: renderDisplay.frame, image: renderedImage)
-    try expect(rendered.pixel(at: PixelPosition(column: 10, row: 10)) == red, "frozen screen drawing keeps the top row at the top; got \(rendered.pixel(at: PixelPosition(column: 10, row: 10)).hex)")
-    try expect(rendered.pixel(at: PixelPosition(column: 10, row: rendered.height - 10)) == blue, "frozen screen drawing keeps the bottom row at the bottom")
+    let renderedTop = try color(rendered, 10, 10).pixel, renderedBottom = try color(rendered, 10, rendered.height - 10).pixel
+    try expect(renderedTop == red, "frozen screen drawing keeps the top row at the top; got \(renderedTop.hex)")
+    try expect(renderedBottom == blue, "frozen screen drawing keeps the bottom row at the bottom")
 
     let bounds = CGRect(x: 0, y: 0, width: 800, height: 500)
     for point in [CGPoint(x: 0, y: 0), CGPoint(x: 799, y: 499), CGPoint(x: 20, y: 480), CGPoint(x: 780, y: 20), CGPoint(x: 400, y: 250)] {

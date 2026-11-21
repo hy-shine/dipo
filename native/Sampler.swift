@@ -99,10 +99,14 @@ final class SamplerDelegate: NSObject, NSApplicationDelegate {
 
     func commit() {
         guard let view = activeView, let selection = view.selection else { return }
-        let pixel = view.snapshot.pixel(at: selection)
+        let color: ScreenColor
+        do { color = try view.snapshot.color(at: selection) } catch {
+            fail(error)
+            return
+        }
         let point = view.snapshot.point(at: selection)
         let top = NSScreen.screens.first?.frame.maxY ?? 0
-        finish(Sample(status: "picked", red: Double(pixel.red) / 255, green: Double(pixel.green) / 255, blue: Double(pixel.blue) / 255, x: Double(point.x), y: Double(top - point.y)))
+        finish(Sample(status: "picked", red: color.red, green: color.green, blue: color.blue, x: Double(point.x), y: Double(top - point.y)))
     }
 
     func cancel() { finish(.empty("cancelled")) }

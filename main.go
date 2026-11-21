@@ -47,6 +47,10 @@ type dipo struct {
 	store              *library.Store
 	current            colour.Color
 	original           colour.Color
+	// measured is the color the last pick read off the screen while original
+	// is still that pick's; nil otherwise. It holds what an 8-bit sRGB color
+	// cannot: a color outside sRGB.
+	measured           *colour.SRGB
 	input              string
 	inputErr           localizedText
 	storageErr         localizedText
@@ -121,9 +125,29 @@ func (app *dipo) useColor(value colour.Color, original bool) {
 	app.current, app.inputErr = value, nil
 	app.hue, app.saturation, app.brightness = value.HSV()
 	if original {
-		app.original = value
+		app.original, app.measured = value, nil
 	}
 	app.notify()
+}
+
+// colorText writes value in format. The color last picked writes as the
+// screen showed it, which a Display P3 format can hold when the color lies
+// outside sRGB; any other color writes from its sRGB value.
+func (app *dipo) colorText(value colour.Color, format colour.Format) string {
+	if app.measured != nil && value == app.original {
+		return app.measured.Text(format, value.A)
+	}
+	return value.Text(format)
+}
+
+// formatName is how the copy notice names a copy format.
+func formatName(format colour.Format) string {
+	switch format {
+	case colour.P3HEX:
+		return "P3 HEX"
+	default:
+		return string(format)
+	}
 }
 
 func (app *dipo) save() {
@@ -263,12 +287,12 @@ func (app *dipo) copyColor(value colour.Color) bool {
 		app.setStatus(locales.Messages.ClipboardNotReady, true)
 		return false
 	}
-	if err := app.writeClipboard(value.Text(app.state.Format)); err != nil {
+	if err := app.writeClipboard(app.colorText(value, app.state.Format)); err != nil {
 		app.setStatus(locales.Messages.CopyFailed, true)
 		slog.Error("copy color", "error", err)
 		return false
 	}
-	format := string(app.state.Format)
+	format := formatName(app.state.Format)
 	app.setStatus(func(messages locales.Messages) string { return messages.CopiedFormat(format) }, false)
 	app.copyNotice = true
 	if app.stopCopyFeedback != nil {
@@ -284,14 +308,29 @@ func (app *dipo) copyColor(value colour.Color) bool {
 	return true
 }
 
-func (app *dipo) acceptPick(value colour.Color) bool {
+// acceptPick makes the color a pick measured current and recent, and copies it
+// unless the user turned that off. The library keeps the nearest sRGB color;
+// a color outside the copy format's space adds a notice that the copy is the
+// nearest one inside it.
+func (app *dipo) acceptPick(measured colour.SRGB) bool {
+	value := measured.Color(255)
 	app.setColor(value, true)
+	app.measured = &measured
 	app.state.Picked(value)
 	ok := true
 	if app.state.NoAutoCopy {
 		app.setStatus(locales.Messages.ColorPicked, false)
 	} else {
 		ok = app.copyColor(value)
+	}
+	if ok && measured.Clipped(app.state.Format) {
+		status, p3 := app.status, app.state.Format.DisplayP3()
+		app.status = func(messages locales.Messages) string {
+			if p3 {
+				return status.in(messages) + " · " + messages.ApproximateDisplayP3()
+			}
+			return status.in(messages) + " · " + messages.ApproximateSRGB()
+		}
 	}
 	app.save()
 	return ok
@@ -404,13 +443,7 @@ func (app *dipo) finishPick(picked sample) {
 		return
 	}
 	app.permissionChecked, app.permissionGranted, app.permissionPrompt = true, true, false
-	ok := app.acceptPick(picked.color())
-	if picked.outsideSRGB() && ok {
-		previousStatus := app.status
-		app.status = func(messages locales.Messages) string {
-			return previousStatus.in(messages) + " · " + messages.ApproximateSRGB()
-		}
-	}
+	ok := app.acceptPick(picked.measured())
 	if app.restoreMain || !ok || app.storageErr != nil {
 		app.window.Show()
 	}
@@ -646,7 +679,7 @@ func (app *dipo) toastView(scope *core.Scope) core.Node {
 				return core.Style{Background: core.Color(uint32(app.current.R)<<24 | uint32(app.current.G)<<16 | uint32(app.current.B)<<8 | uint32(app.current.A))}
 			}},
 			core.View{Class: "gap-1", Children: []core.Node{
-				core.Text{Class: "text-xs font-medium", Style: core.Style{FontFamily: core.FontMonospace}, ContentFunc: func() string { app.observe(); return app.current.Text(app.state.Format) }},
+				core.Text{Class: "text-xs font-medium", Style: core.Style{FontFamily: core.FontMonospace}, ContentFunc: func() string { app.observe(); return app.colorText(app.current, app.state.Format) }},
 				core.Text{Class: "text-xs text-neutral-500", ContentFunc: func() string { app.observe(); return app.status.in(app.messages()) }},
 			}},
 		},
@@ -681,7 +714,7 @@ func (app *dipo) trayOptions() desktop.TrayOptions {
 func (app *dipo) recentMenu(msgs locales.Messages) desktop.MenuItem {
 	items := make([]desktop.MenuItem, 0, len(app.state.Recent))
 	for _, value := range app.state.Recent {
-		items = append(items, desktop.MenuItem{Label: value.Text(app.state.Format), OnSelect: func() { app.copyColor(value) }})
+		items = append(items, desktop.MenuItem{Label: app.colorText(value, app.state.Format), OnSelect: func() { app.copyColor(value) }})
 	}
 	if len(items) == 0 {
 		items = append(items, desktop.MenuItem{Label: msgs.NoRecentColors(), Disabled: true})

@@ -20,6 +20,29 @@ struct Pixel: Equatable {
     var hex: String { String(format: "#%02X%02X%02X", red, green, blue) }
 }
 
+/// A color in extended sRGB: sRGB's primaries and transfer curve, with
+/// components that may pass 0 and 1, so a color that sRGB cannot show keeps
+/// how far outside it lies.
+struct ScreenColor: Equatable {
+    let red: Double
+    let green: Double
+    let blue: Double
+
+    /// The nearest 8-bit sRGB color: each component clamped to sRGB and rounded.
+    var pixel: Pixel { Pixel(red: Self.channel(red), green: Self.channel(green), blue: Self.channel(blue)) }
+
+    /// Whether sRGB can show the color: every component rounds to an 8-bit
+    /// value without clamping. Go's colour package draws the same line.
+    var insideSRGB: Bool { [red, green, blue].allSatisfy { $0 * 255 >= -0.5 && $0 * 255 <= 255.5 } }
+
+    /// The color to draw, outside sRGB included.
+    var color: NSColor {
+        NSColor(colorSpace: .extendedSRGB, components: [CGFloat(red), CGFloat(green), CGFloat(blue), 1], count: 4)
+    }
+
+    private static func channel(_ value: Double) -> UInt8 { UInt8((min(1, max(0, value)) * 255).rounded()) }
+}
+
 struct PixelPosition: Equatable {
     let column: Int
     let row: Int
@@ -27,10 +50,14 @@ struct PixelPosition: Equatable {
 
 final class FrozenDisplay {
     let frame: CGRect
+    /// The screen in 8-bit sRGB, to draw it frozen.
     let image: CGImage
     let width: Int
     let height: Int
-    private let bytes: Data
+    /// The screen as captured, which colors are read from: converting only the
+    /// pixels read keeps colors outside sRGB without holding a second
+    /// full-screen copy in floating point.
+    private let capture: CGImage
 
     init(frame: CGRect, image: CGImage) throws {
         width = image.width
@@ -46,9 +73,9 @@ final class FrozenDisplay {
         else { throw PickerFailure.bitmap }
         context.interpolationQuality = .none
         context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
-        guard let pointer = context.data, let normalized = context.makeImage() else { throw PickerFailure.bitmap }
-        bytes = Data(bytes: pointer, count: width * height * 4)
+        guard let normalized = context.makeImage() else { throw PickerFailure.bitmap }
         self.image = normalized
+        capture = image
     }
 
     func position(at point: CGPoint) -> PixelPosition {
@@ -65,11 +92,42 @@ final class FrozenDisplay {
         )
     }
 
-    func pixel(at position: PixelPosition) -> Pixel {
-        let column = min(width - 1, max(0, position.column))
-        let row = min(height - 1, max(0, position.row))
-        let offset = (row * width + column) * 4
-        return Pixel(red: bytes[offset], green: bytes[offset + 1], blue: bytes[offset + 2])
+    func color(at position: PixelPosition) throws -> ScreenColor {
+        try colors(around: position, radius: 0)[0]
+    }
+
+    /// The colors of the square of pixels radius pixels around center, row by
+    /// row from the top left; a position past the capture's edge reads the
+    /// nearest pixel on it.
+    func colors(around center: PixelPosition, radius: Int) throws -> [ScreenColor] {
+        let columns = max(0, min(width - 1, center.column - radius))...max(0, min(width - 1, center.column + radius))
+        let rows = max(0, min(height - 1, center.row - radius))...max(0, min(height - 1, center.row + radius))
+        guard let region = capture.cropping(to: CGRect(x: columns.lowerBound, y: rows.lowerBound, width: columns.count, height: rows.count)),
+              let space = CGColorSpace(name: CGColorSpace.extendedSRGB)
+        else { throw PickerFailure.bitmap }
+        var components = [Float](repeating: 0, count: columns.count * rows.count * 4)
+        let drawn = components.withUnsafeMutableBytes { buffer in
+            guard let context = CGContext(
+                data: buffer.baseAddress, width: columns.count, height: rows.count, bitsPerComponent: 32,
+                bytesPerRow: columns.count * 16, space: space,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.floatComponents.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+            ) else { return false }
+            context.interpolationQuality = .none
+            context.setBlendMode(.copy)
+            context.draw(region, in: CGRect(x: 0, y: 0, width: columns.count, height: rows.count))
+            return true
+        }
+        guard drawn else { throw PickerFailure.bitmap }
+        var result: [ScreenColor] = []
+        result.reserveCapacity((2 * radius + 1) * (2 * radius + 1))
+        for row in center.row - radius...center.row + radius {
+            for column in center.column - radius...center.column + radius {
+                let offset = ((min(rows.upperBound, max(rows.lowerBound, row)) - rows.lowerBound) * columns.count
+                    + min(columns.upperBound, max(columns.lowerBound, column)) - columns.lowerBound) * 4
+                result.append(ScreenColor(red: Double(components[offset]), green: Double(components[offset + 1]), blue: Double(components[offset + 2])))
+            }
+        }
+        return result
     }
 
     func nudge(_ position: PixelPosition, columns: Int, rows: Int) -> PixelPosition {

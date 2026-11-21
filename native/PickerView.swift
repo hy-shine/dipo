@@ -130,13 +130,15 @@ final class PickerView: NSView {
         NSBezierPath(roundedRect: card, xRadius: 12, yRadius: 12).fill()
         NSGraphicsContext.restoreGraphicsState()
 
+        // The colors come from the capture, not the frozen image, so the HEX
+        // below is the one a click returns.
+        guard let colors = try? snapshot.colors(around: selection, radius: 5) else { return }
         let grid = CGRect(x: card.minX + 10, y: card.minY + 10, width: 132, height: 132)
         NSGraphicsContext.saveGraphicsState()
         NSBezierPath(roundedRect: grid, xRadius: 5, yRadius: 5).addClip()
         for row in 0..<11 {
             for column in 0..<11 {
-                let pixel = snapshot.pixel(at: PixelPosition(column: selection.column + column - 5, row: selection.row + row - 5))
-                pixel.color.setFill()
+                colors[row * 11 + column].color.setFill()
                 CGRect(x: grid.minX + CGFloat(column) * 12, y: grid.minY + CGFloat(row) * 12, width: 12, height: 12).fill()
             }
         }
@@ -162,10 +164,10 @@ final class PickerView: NSView {
         whiteRing.lineWidth = 1.5
         whiteRing.stroke()
 
-        let value = snapshot.pixel(at: selection)
+        let value = colors[60]
         value.color.setFill()
         NSBezierPath(roundedRect: CGRect(x: card.minX + 12, y: card.minY + 153, width: 16, height: 16), xRadius: 4, yRadius: 4).fill()
-        drawLabel(value.hex, at: CGPoint(x: card.minX + 36, y: card.minY + 151), font: .monospacedSystemFont(ofSize: 13, weight: .medium), color: .white)
+        drawLabel(value.pixel.hex, at: CGPoint(x: card.minX + 36, y: card.minY + 151), font: .monospacedSystemFont(ofSize: 13, weight: .medium), color: .white)
         drawLabel(hint, at: CGPoint(x: card.minX + 12, y: card.minY + 181), font: .systemFont(ofSize: 10), color: NSColor.white.withAlphaComponent(0.55))
     }
 
