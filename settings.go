@@ -32,7 +32,8 @@ func (app *dipo) settingsView(cx *core.Scope) core.Node {
 					}, Value: func() library.Language { app.observe(); return app.state.Language }, OnChange: app.setLanguage}},
 					ui.FormRow{Title: msgs.Appearance(), Control: ui.Select[library.Theme]{TestID: "theme-picker", Label: msgs.Appearance(), Style: core.Style{Width: core.Pt(160), Height: core.Pt(28)}, Options: []ui.Option[library.Theme]{{Value: library.ThemeSystem, Label: msgs.ThemeSystem()}, {Value: library.ThemeLight, Label: msgs.ThemeLight()}, {Value: library.ThemeDark, Label: msgs.ThemeDark()}}, Value: func() library.Theme { app.observe(); return app.state.Theme }, OnChange: app.setTheme}},
 					ui.FormRow{Title: msgs.OpenAtLogin(), Control: ui.Switch{TestID: "open-at-login", Label: msgs.OpenAtLogin(), Disabled: func() bool { return app.setLaunchAtLogin == nil }, Checked: func() bool { app.observe(); return app.openAtLogin }, OnChange: app.setOpenAtLogin}},
-					ui.FormRow{Title: msgs.ShowInMenuBar(), Control: ui.Switch{TestID: "show-in-menu-bar", Label: msgs.ShowInMenuBar(), Checked: func() bool { app.observe(); return !app.state.MenuBarHidden }, OnChange: app.setMenuBarVisible}},
+					ui.FormRow{Title: msgs.ShowInMenuBar(), Control: ui.Switch{TestID: "show-in-menu-bar", Label: msgs.ShowInMenuBar(), Disabled: func() bool { app.observe(); return app.state.DockHidden }, Checked: func() bool { app.observe(); return !app.state.MenuBarHidden }, OnChange: app.setMenuBarVisible}},
+					ui.FormRow{Title: msgs.ShowInDock(), Control: ui.Switch{TestID: "show-in-dock", Label: msgs.ShowInDock(), Disabled: func() bool { app.observe(); return app.state.MenuBarHidden }, Checked: func() bool { app.observe(); return !app.state.DockHidden }, OnChange: app.setDockVisible}},
 				}},
 				ui.FormSection{Title: msgs.Picking(), Children: []core.Node{
 					core.View{Children: []core.Node{

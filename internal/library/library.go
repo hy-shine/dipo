@@ -42,6 +42,9 @@ type State struct {
 	// MenuBarHidden is true once the user turns the menu bar icon off; the zero
 	// value keeps it, as files saved before the setting existed do.
 	MenuBarHidden bool `json:"menu_bar_hidden"`
+	// DockHidden is true once the user takes Dipo out of the Dock; the zero
+	// value keeps it there, as files saved before the setting existed do.
+	DockHidden bool `json:"dock_hidden"`
 	// NoAutoCopy is true once the user turns off copying a picked color; the zero
 	// value copies, as files saved before the setting existed do.
 	NoAutoCopy bool           `json:"no_auto_copy"`

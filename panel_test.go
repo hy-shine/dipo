@@ -507,6 +507,41 @@ func TestSettingsMenuBarSwitchIsRemembered(test *testing.T) {
 	}
 }
 
+func TestSettingsDockSwitchIsRemembered(test *testing.T) {
+	application, controller := startSettings(test, nil)
+	application.Press("id:show-in-dock")
+	if !controller.state.DockHidden {
+		test.Fatal("turning the Dock icon off was not kept")
+	}
+	application.Press("id:show-in-dock")
+	if controller.state.DockHidden {
+		test.Fatal("turning the Dock icon back on was not kept")
+	}
+}
+
+func TestSettingsKeepOneWayBackIn(test *testing.T) {
+	application, controller := startSettings(test, nil)
+	application.Press("id:show-in-dock")
+	if application.Enabled("id:show-in-menu-bar") {
+		test.Fatal("the menu bar switch can hide the last icon while the Dock icon is gone")
+	}
+	application.Post(func() { controller.setMenuBarVisible(false) })
+	application.Settle()
+	if controller.state.MenuBarHidden {
+		test.Fatal("the menu bar icon went while the Dock icon was already gone")
+	}
+	application.Press("id:show-in-dock")
+	application.Press("id:show-in-menu-bar")
+	if application.Enabled("id:show-in-dock") {
+		test.Fatal("the Dock switch can hide the last icon while the menu bar icon is gone")
+	}
+	application.Post(func() { controller.setDockVisible(false) })
+	application.Settle()
+	if controller.state.DockHidden {
+		test.Fatal("the Dock icon went while the menu bar icon was already gone")
+	}
+}
+
 func TestSettingsShortcutRecorderTakesTheKeysPressed(test *testing.T) {
 	application, controller := startSettings(test, nil)
 	msgs := locales.In("zh-Hans")

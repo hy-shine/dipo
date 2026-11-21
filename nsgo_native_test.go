@@ -184,7 +184,7 @@ func TestNativeSettingsWindow(test *testing.T) {
 						test.Fatalf("the settings content is %v tall in a window showing %v, %s", content.Size.Height, frame.Size.Height, stage)
 					}
 				}
-				rest := []string{"language-picker", "theme-picker", "shortcut-recorder", "permission-state", "permission-refresh", "permission-settings", "open-at-login", "show-in-menu-bar", "auto-copy", "check-updates"}
+				rest := []string{"language-picker", "theme-picker", "shortcut-recorder", "show-in-dock", "permission-state", "permission-refresh", "permission-settings", "open-at-login", "show-in-menu-bar", "auto-copy", "check-updates"}
 				checkViewport("at rest", rest)
 				fitsWindow("at rest")
 				application.Screenshot("nsgo-settings-" + string(language) + "-" + appearance.name)

@@ -322,6 +322,7 @@ const (
 	textThemeDark
 	textOpenAtLogin
 	textShowInMenuBar
+	textShowInDock
 	textPicking
 	textPickShortcut
 	textAutoCopy
@@ -431,6 +432,7 @@ var keyOfText = [numTexts]string{
 	"themeDark",
 	"openAtLogin",
 	"showInMenuBar",
+	"showInDock",
 	"picking",
 	"pickShortcut",
 	"autoCopy",
@@ -538,6 +540,7 @@ var textsEn = i18n.NewTexts(""+
 	"Dark"+
 	"Open at Login"+
 	"Show in Menu Bar"+
+	"Show in Dock"+
 	"Picking"+
 	"Pick shortcut"+
 	"Copy After Picking"+
@@ -642,6 +645,7 @@ var textsEn = i18n.NewTexts(""+
 		4,
 		13,
 		16,
+		12,
 		7,
 		13,
 		18,
@@ -749,6 +753,7 @@ var textsZhHans = i18n.NewTexts(""+
 	"深色"+
 	"登录时打开"+
 	"在菜单栏显示"+
+	"在程序坞显示"+
 	"取色"+
 	"取色快捷键"+
 	"取色后自动复制"+
@@ -852,6 +857,7 @@ var textsZhHans = i18n.NewTexts(""+
 		6,
 		6,
 		15,
+		18,
 		18,
 		6,
 		15,
@@ -960,6 +966,7 @@ var textsZhHant = i18n.NewTexts(""+
 	"深色"+
 	"登入時打開"+
 	"在選單列顯示"+
+	"在 Dock 顯示"+
 	"取色"+
 	"取色快速鍵"+
 	"取色後自動複製"+
@@ -1064,6 +1071,7 @@ var textsZhHant = i18n.NewTexts(""+
 		6,
 		15,
 		18,
+		15,
 		6,
 		15,
 		21,
@@ -1844,6 +1852,13 @@ func ShowInMenuBar(cx *core.Scope) string { return For(cx).ShowInMenuBar() }
 
 // ShowInMenuBar is the package's ShowInMenuBar in the language of msgs.
 func (msgs Messages) ShowInMenuBar() string { return msgs.text(textShowInMenuBar) }
+
+// ShowInDock says "Show in Dock"
+// in the language the app shows under cx.
+func ShowInDock(cx *core.Scope) string { return For(cx).ShowInDock() }
+
+// ShowInDock is the package's ShowInDock in the language of msgs.
+func (msgs Messages) ShowInDock() string { return msgs.text(textShowInDock) }
 
 // Picking says "Picking"
 // in the language the app shows under cx.

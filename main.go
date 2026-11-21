@@ -176,10 +176,25 @@ func (app *dipo) setAutoCopy(on bool) {
 }
 
 // setMenuBarVisible shows or removes the menu bar icon and remembers the
-// choice. The Dock icon stays, so the app is always reachable.
+// choice. With the Dock icon gone the menu bar icon is the way back in, so it
+// stays.
 func (app *dipo) setMenuBarVisible(visible bool) {
+	if !visible && app.state.DockHidden {
+		return
+	}
 	app.state.MenuBarHidden = !visible
 	app.showMenuBarIcon(visible)
+	app.save()
+}
+
+// setDockVisible shows or hides the Dock icon and remembers the choice. With
+// the menu bar icon gone the Dock icon is the way back in, so it stays.
+func (app *dipo) setDockVisible(visible bool) {
+	if !visible && app.state.MenuBarHidden {
+		return
+	}
+	app.state.DockHidden = !visible
+	desktop.SetDockVisible(app.scope, visible)
 	app.save()
 }
 
@@ -304,7 +319,7 @@ func (app *dipo) showSettings() {
 // The settings window is tall enough to show every section without scrolling.
 const (
 	settingsWidth  = 460
-	settingsHeight = 500
+	settingsHeight = 533
 )
 
 func (app *dipo) openSettingsWindow() {
@@ -691,6 +706,11 @@ func (app *dipo) ready(ctx context.Context) {
 	}, app.toastView)
 	app.toast.Hide()
 	app.showMenuBarIcon(!app.state.MenuBarHidden)
+	// The Dock icon shows from the start; one the user took away goes now. A
+	// file that hides both icons keeps the Dock's.
+	if app.state.DockHidden && !app.state.MenuBarHidden {
+		desktop.SetDockVisible(app.scope, false)
+	}
 	app.menus()
 	desktop.OnReopen(app.scope, app.show)
 	app.registerShortcut(app.state.Shortcut, false)
