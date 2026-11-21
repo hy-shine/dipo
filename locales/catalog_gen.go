@@ -212,11 +212,12 @@ func For(cx *core.Scope) Messages {
 // its method, for the TSX declarations of the messages
 // (tsx.RegisterMessages).
 var Parameters = map[string][]string{
-	"CopiedFormat": {"format"},
-	"ChannelValue": {"channel"},
-	"SliderLabel":  {"name"},
-	"AppVersion":   {"version"},
-	"RecentCount":  {"count"},
+	"CopiedFormat":           {"format"},
+	"ChannelValue":           {"channel"},
+	"SliderLabel":            {"name"},
+	"RestoreDefaultShortcut": {"shortcut"},
+	"AppVersion":             {"version"},
+	"RecentCount":            {"count"},
 }
 
 // Translation is a language's messages another package supplies:
@@ -224,12 +225,13 @@ var Parameters = map[string][]string{
 // of the others; a key or a field left out leaves the message to the
 // catalog.
 type Translation struct {
-	Texts        map[string]string
-	CopiedFormat func(format string) string
-	ChannelValue func(channel string) string
-	SliderLabel  func(name string) string
-	AppVersion   func(version string) string
-	RecentCount  func(count int) string
+	Texts                  map[string]string
+	CopiedFormat           func(format string) string
+	ChannelValue           func(channel string) string
+	SliderLabel            func(name string) string
+	RestoreDefaultShortcut func(shortcut string) string
+	AppVersion             func(version string) string
+	RecentCount            func(count int) string
 }
 
 var supplied = map[string]Translation{}
@@ -1172,6 +1174,9 @@ func Supply(lang string, t Translation) {
 	if t.SliderLabel != nil {
 		s.SliderLabel = t.SliderLabel
 	}
+	if t.RestoreDefaultShortcut != nil {
+		s.RestoreDefaultShortcut = t.RestoreDefaultShortcut
+	}
 	if t.AppVersion != nil {
 		s.AppVersion = t.AppVersion
 	}
@@ -1924,6 +1929,32 @@ func TypeShortcut(cx *core.Scope) string { return For(cx).TypeShortcut() }
 
 // TypeShortcut is the package's TypeShortcut in the language of msgs.
 func (msgs Messages) TypeShortcut() string { return msgs.text(textTypeShortcut) }
+
+// RestoreDefaultShortcut says "Restore default ({shortcut})"
+// in the language the app shows under cx.
+func RestoreDefaultShortcut(cx *core.Scope, shortcut string) string {
+	return For(cx).RestoreDefaultShortcut(shortcut)
+}
+
+// RestoreDefaultShortcut is the package's RestoreDefaultShortcut in the language of msgs.
+func (msgs Messages) RestoreDefaultShortcut(shortcut string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.RestoreDefaultShortcut(shortcut))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].RestoreDefaultShortcut; f != nil {
+			return f(shortcut)
+		}
+		switch lang {
+		case "", "en":
+			return "Restore default (" + msgs.arg(shortcut) + ")"
+		case "zh-Hans":
+			return "恢复默认（" + shortcut + "）"
+		case "zh-Hant":
+			return "恢復預設（" + shortcut + "）"
+		}
+	}
+}
 
 // ScreenRecording says "Screen Recording"
 // in the language the app shows under cx.

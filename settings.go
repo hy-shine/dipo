@@ -6,6 +6,7 @@ import (
 
 	"github.com/nsgo-dev/nsgo/core"
 	"github.com/nsgo-dev/nsgo/desktop"
+	"github.com/nsgo-dev/nsgo/icons/lucide"
 	"github.com/nsgo-dev/nsgo/ui"
 )
 
@@ -37,7 +38,11 @@ func (app *dipo) settingsView(cx *core.Scope) core.Node {
 				}},
 				ui.FormSection{Title: msgs.Picking(), Children: []core.Node{
 					core.View{Children: []core.Node{
-						ui.FormRow{Title: msgs.PickShortcut(), Control: app.shortcutRecorder(cx, msgs, colors)},
+						ui.FormRow{Title: msgs.PickShortcut(), Control: core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 4}, Children: []core.Node{
+							app.shortcutRecorder(cx, msgs, colors),
+							withTooltip(msgs.RestoreDefaultShortcut(library.DefaultShortcut), ui.Button{TestID: "shortcut-default", Label: msgs.RestoreDefaultShortcut(library.DefaultShortcut), Icon: lucide.RotateCcw, Variant: ui.ButtonGhost, Size: ui.SizeSmall,
+								Disabled: app.shortcutIsDefault, OnPress: func() { app.registerShortcut(library.DefaultShortcut, true) }}),
+						}}},
 						core.Show{When: func() bool { app.observe(); return app.shortcutErr != nil }, Then: func(*core.Scope) core.Node {
 							return core.Text{TestID: "shortcut-error", Style: core.Style{Padding: core.Edges{Left: 12, Right: 12, Bottom: 8}, FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: colors.Warn()} }, ContentFunc: func() string { app.observe(); return app.shortcutErr.in(msgs) }}
 						}},
@@ -113,6 +118,18 @@ func (app *dipo) shortcutRecorder(cx *core.Scope, msgs locales.Messages, colors 
 			return app.state.Shortcut
 		}}},
 	}
+}
+
+// shortcutIsDefault reports whether the pick shortcut is the default one, which
+// leaves nothing for the restore button to do.
+func (app *dipo) shortcutIsDefault() bool {
+	app.observe()
+	current, err := normalizeShortcut(app.state.Shortcut)
+	if err != nil {
+		return false
+	}
+	standard, _ := normalizeShortcut(library.DefaultShortcut)
+	return current == standard
 }
 
 // aboutVersion is the line under the app's name in settings, for the version
