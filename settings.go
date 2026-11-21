@@ -21,7 +21,7 @@ func (app *dipo) settingsView(cx *core.Scope) core.Node {
 		colors := ui.ColorsOf(cx)
 		msgs := locales.For(cx)
 		desktop.SetTitle(cx, msgs.Settings())
-		return core.Scroll{TestID: "settings-scroll", Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: []core.Node{
+		return core.Scroll{TestID: "settings-scroll", Ref: &app.settingsScroll, Style: core.Style{FlexGrow: 1, FlexShrink: 1}, Children: []core.Node{
 			core.View{Style: core.Style{Gap: 20, Padding: core.Edges{Left: 20, Right: 20, Top: 18, Bottom: 20}}, Children: []core.Node{
 				ui.FormSection{Title: msgs.General(), Children: []core.Node{
 					ui.FormRow{Title: msgs.Language(), Control: ui.Select[library.Language]{TestID: "language-picker", Label: msgs.Language(), Style: core.Style{Width: core.Pt(160), Height: core.Pt(28)}, Options: []ui.Option[library.Language]{
@@ -36,10 +36,7 @@ func (app *dipo) settingsView(cx *core.Scope) core.Node {
 				}},
 				ui.FormSection{Title: msgs.Picking(), Children: []core.Node{
 					core.View{Children: []core.Node{
-						ui.FormRow{Title: msgs.PickShortcut(), Control: core.View{Style: core.Style{Direction: core.Row, AlignItems: core.AlignCenter, Gap: 8}, Children: []core.Node{
-							ui.Input{TestID: "shortcut-input", Label: msgs.PickShortcut(), Style: core.Style{Width: core.Pt(140), FontFamily: core.FontMonospace}, Value: func() string { app.observe(); return app.shortcut }, OnChange: func(text string) { app.shortcut = text; app.notify() }, OnSubmit: func(string) { app.updateShortcut() }},
-							ui.Button{TestID: "shortcut-apply", Text: msgs.Apply(), Variant: ui.ButtonOutline, Size: ui.SizeSmall, OnPress: app.updateShortcut},
-						}}},
+						ui.FormRow{Title: msgs.PickShortcut(), Control: app.shortcutRecorder(cx, msgs, colors)},
 						core.Show{When: func() bool { app.observe(); return app.shortcutErr != nil }, Then: func(*core.Scope) core.Node {
 							return core.Text{TestID: "shortcut-error", Style: core.Style{Padding: core.Edges{Left: 12, Right: 12, Bottom: 8}, FontSize: 11}, StyleFunc: func() core.Style { return core.Style{Color: colors.Warn()} }, ContentFunc: func() string { app.observe(); return app.shortcutErr.in(msgs) }}
 						}},
@@ -78,6 +75,43 @@ func (app *dipo) settingsView(cx *core.Scope) core.Node {
 			}},
 		}}
 	})
+}
+
+// shortcutRecorder is the pick shortcut's control: once it has the keyboard
+// focus, by a click or by Tab, the next combination pressed becomes the
+// shortcut, as in macOS's own keyboard settings. The global shortcut in force
+// keeps taking its keys before the window sees them, so pressing that one here
+// starts a pick instead.
+func (app *dipo) shortcutRecorder(cx *core.Scope, msgs locales.Messages, colors ui.Colors) core.Node {
+	var target core.Ref
+	app.shortcutField = &target
+	return core.View{
+		TestID: "shortcut-recorder", Label: msgs.PickShortcut(), Ref: &target,
+		Focusable: func() bool { return true },
+		Style: core.Style{
+			Width: core.Pt(140), Height: core.Pt(28), AlignItems: core.AlignCenter, JustifyContent: core.JustifyCenter,
+			CornerRadius: 6, BorderWidth: 1, FocusVisible: ui.FocusRing(cx, 0),
+		},
+		StyleFunc: func() core.Style {
+			app.observe()
+			border := colors.FieldBorder()
+			if app.recording {
+				border = colors.Accent()
+			}
+			return core.Style{Background: colors.Field(), BorderColor: border}
+		},
+		OnPressDown: func(core.PressEvent) { target.Focus() },
+		OnFocus:     func() { app.recording = true; app.notify() },
+		OnBlur:      func() { app.recording = false; app.notify() },
+		OnKeyDown:   app.recordShortcut,
+		Children: []core.Node{core.Text{TestID: "shortcut-text", Style: core.Style{FontFamily: core.FontMonospace}, ContentFunc: func() string {
+			app.observe()
+			if app.recording {
+				return msgs.TypeShortcut()
+			}
+			return app.state.Shortcut
+		}}},
+	}
 }
 
 // aboutVersion is the line under the app's name in settings, for the version

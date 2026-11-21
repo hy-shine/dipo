@@ -84,3 +84,20 @@ func TestPickWithAutoCopyOffLeavesTheClipboardAlone(t *testing.T) {
 		t.Fatalf("status = %q, failed = %t; want a plain picked notice", app.status.in(app.messages()), app.statusFailed)
 	}
 }
+
+func TestShortcutTextReadsBackAsTheSameShortcut(t *testing.T) {
+	for _, test := range []struct{ key, want string }{
+		{"ctrl+alt+c", "Ctrl+Alt+C"},
+		{"shift+mod+j", "Shift+Cmd+J"},
+		{"ctrl+alt+shift+mod+,", "Ctrl+Alt+Shift+Cmd+,"},
+		{"alt+7", "Alt+7"},
+	} {
+		got := shortcutText(test.key)
+		if got != test.want {
+			t.Errorf("shortcutText(%q) = %q; want %q", test.key, got, test.want)
+		}
+		if back, err := normalizeShortcut(got); err != nil || back != test.key {
+			t.Errorf("normalizeShortcut(%q) = %q, %v; want %q", got, back, err, test.key)
+		}
+	}
+}

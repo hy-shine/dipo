@@ -507,6 +507,52 @@ func TestSettingsMenuBarSwitchIsRemembered(test *testing.T) {
 	}
 }
 
+func TestSettingsShortcutRecorderTakesTheKeysPressed(test *testing.T) {
+	application, controller := startSettings(test, nil)
+	msgs := locales.In("zh-Hans")
+	application.Focus("id:shortcut-recorder")
+	if !slices.Contains(application.Texts(), msgs.TypeShortcut()) {
+		test.Fatalf("a focused recorder does not ask for a shortcut: %q", application.Texts())
+	}
+	for _, press := range []struct{ key, want string }{
+		{"ctrl+alt+k", "Ctrl+Alt+K"},
+		{"mod+shift+j", "Shift+Cmd+J"},
+		{"alt+,", "Alt+,"},
+	} {
+		application.Key(press.key)
+		application.Settle()
+		if controller.state.Shortcut != press.want || controller.shortcutErr != nil {
+			test.Fatalf("after %s the shortcut is %q, error %v; want %q", press.key, controller.state.Shortcut, controller.shortcutErr != nil, press.want)
+		}
+		// A finished recording leaves the field, which then shows the saved shortcut
+		// without waiting for another control to take the focus.
+		if controller.recording || slices.Contains(application.Texts(), msgs.TypeShortcut()) || !slices.Contains(application.Texts(), press.want) {
+			test.Fatalf("after %s the field shows %q, recording %t; want %q", press.key, application.Texts(), controller.recording, press.want)
+		}
+		application.Focus("id:shortcut-recorder")
+	}
+	application.Key("tab")
+	if controller.recording || !slices.Contains(application.Texts(), "Alt+,") {
+		test.Fatalf("Tab did not leave the recorder, or it shows %q", application.Texts())
+	}
+}
+
+func TestSettingsShortcutRecorderRefusesWhatCannotBeAShortcut(test *testing.T) {
+	application, controller := startSettings(test, nil)
+	want := controller.state.Shortcut
+	application.Focus("id:shortcut-recorder")
+	for _, key := range []string{"k", "shift+k", "f5", "ctrl+f5", "ctrl+escape", "alt+space"} {
+		application.Key(key)
+		application.Settle()
+		if controller.shortcutErr == nil || controller.state.Shortcut != want {
+			test.Fatalf("%s gave shortcut %q, error %v; want %q kept and an error", key, controller.state.Shortcut, controller.shortcutErr != nil, want)
+		}
+		application.Find("id:shortcut-error")
+		application.Post(func() { controller.shortcutErr = nil })
+		application.Settle()
+	}
+}
+
 func TestMainWindowOpensSettingsWindow(test *testing.T) {
 	application, controller := startPanel(test, nil)
 	opened := 0
@@ -1006,16 +1052,17 @@ func TestSettingsAutoCopySwitch(test *testing.T) {
 	}
 }
 
-func TestSettingsReopenDropsUnappliedShortcut(test *testing.T) {
+func TestSettingsReopenDropsShortcutError(test *testing.T) {
 	application, controller := startSettings(test, nil)
 	application.Post(func() {
-		controller.shortcut, controller.shortcutErr = "Ctrl+Shift+K", locales.Messages.ShortcutUnavailable
+		controller.shortcutErr = locales.Messages.ShortcutUnavailable
 		controller.notify()
 	})
 	application.Settle()
+	application.Find("id:shortcut-error")
 	application.Post(controller.showSettings)
 	application.Settle()
-	if controller.shortcut != controller.state.Shortcut || controller.shortcutErr != nil {
-		test.Fatalf("shortcut field %q, error %v after reopening; want the shortcut in force %q and no error", controller.shortcut, controller.shortcutErr != nil, controller.state.Shortcut)
+	if controller.shortcutErr != nil || slices.Contains(application.Texts(), locales.Messages.ShortcutUnavailable(locales.In("zh-Hans"))) {
+		test.Fatal("a refused shortcut's message outlived the settings window")
 	}
 }

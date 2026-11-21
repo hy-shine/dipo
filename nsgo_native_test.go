@@ -154,9 +154,10 @@ func TestNativeSettingsWindow(test *testing.T) {
 	for _, language := range nativeLanguages {
 		for _, appearance := range nativeAppearances {
 			test.Run(string(language)+"-"+appearance.name, func(test *testing.T) {
+				var controller *dipo
 				application := nsgotest.Start(test, func(scope *core.Scope) core.Node {
 					scope.SetAppearance(appearance.mode)
-					controller := newDipo(scope)
+					controller = newDipo(scope)
 					controller.state.Language = language
 					controller.applyLanguage()
 					controller.permissionChecked, controller.permissionGranted = true, true
@@ -167,14 +168,32 @@ func TestNativeSettingsWindow(test *testing.T) {
 				application.Find("id:language-picker")
 				application.Find("id:theme-picker")
 				application.Find("id:permission-state")
-				viewport := application.Find("id:settings-scroll").Bounds()
-				for _, selector := range []string{"language-picker", "theme-picker", "shortcut-input", "permission-state", "permission-refresh", "permission-settings", "open-at-login", "show-in-menu-bar", "auto-copy", "check-updates"} {
-					bounds := application.Find("id:" + selector).Bounds()
-					if bounds.Origin.X < viewport.Origin.X || bounds.Origin.Y < viewport.Origin.Y || bounds.Origin.X+bounds.Size.Width > viewport.Origin.X+viewport.Size.Width || bounds.Origin.Y+bounds.Size.Height > viewport.Origin.Y+viewport.Size.Height {
-						test.Fatalf("%s is outside the settings viewport: bounds %+v, viewport %+v", selector, bounds, viewport)
+				checkViewport := func(stage string, selectors []string) {
+					viewport := application.Find("id:settings-scroll").Bounds()
+					for _, selector := range selectors {
+						bounds := application.Find("id:" + selector).Bounds()
+						if bounds.Origin.X < viewport.Origin.X || bounds.Origin.Y < viewport.Origin.Y || bounds.Origin.X+bounds.Size.Width > viewport.Origin.X+viewport.Size.Width || bounds.Origin.Y+bounds.Size.Height > viewport.Origin.Y+viewport.Size.Height {
+							test.Fatalf("%s is outside the settings viewport %s: bounds %+v, viewport %+v", selector, stage, bounds, viewport)
+						}
 					}
 				}
+				fitsWindow := func(stage string) {
+					content, held := controller.settingsScroll.ContentBounds()
+					frame, framed := controller.settingsScroll.Bounds()
+					if !held || !framed || content.Size.Height > frame.Size.Height {
+						test.Fatalf("the settings content is %v tall in a window showing %v, %s", content.Size.Height, frame.Size.Height, stage)
+					}
+				}
+				rest := []string{"language-picker", "theme-picker", "shortcut-recorder", "permission-state", "permission-refresh", "permission-settings", "open-at-login", "show-in-menu-bar", "auto-copy", "check-updates"}
+				checkViewport("at rest", rest)
+				fitsWindow("at rest")
 				application.Screenshot("nsgo-settings-" + string(language) + "-" + appearance.name)
+				// Refusing a key shows its line below the field. The window scrolls to fit it, so the
+				// rows further down may leave the view; the field and the line must stay in it.
+				application.Focus("id:shortcut-recorder")
+				application.Key("k")
+				application.Settle()
+				checkViewport("with the refusal line", []string{"shortcut-recorder", "shortcut-error"})
 			})
 		}
 	}
