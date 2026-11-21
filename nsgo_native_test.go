@@ -163,12 +163,12 @@ func TestNativeSettingsWindow(test *testing.T) {
 					controller.state.Picked(colour.Opaque(19, 22, 27))
 					controller.state.Picked(colour.Opaque(255, 107, 53))
 					return controller.settingsView(scope)
-				}, nsgotest.Size(460, 420))
+				}, nsgotest.Size(settingsWidth, settingsHeight))
 				application.Find("id:language-picker")
 				application.Find("id:theme-picker")
 				application.Find("id:permission-state")
 				viewport := application.Find("id:settings-scroll").Bounds()
-				for _, selector := range []string{"language-picker", "theme-picker", "shortcut-input", "permission-state", "permission-refresh", "permission-settings", "open-at-login", "show-in-menu-bar", "auto-copy"} {
+				for _, selector := range []string{"language-picker", "theme-picker", "shortcut-input", "permission-state", "permission-refresh", "permission-settings", "open-at-login", "show-in-menu-bar", "auto-copy", "check-updates"} {
 					bounds := application.Find("id:" + selector).Bounds()
 					if bounds.Origin.X < viewport.Origin.X || bounds.Origin.Y < viewport.Origin.Y || bounds.Origin.X+bounds.Size.Width > viewport.Origin.X+viewport.Size.Width || bounds.Origin.Y+bounds.Size.Height > viewport.Origin.Y+viewport.Size.Height {
 						test.Fatalf("%s is outside the settings viewport: bounds %+v, viewport %+v", selector, bounds, viewport)
@@ -188,7 +188,7 @@ func TestNativeMenuBarIconCanBeRemovedAndReturn(test *testing.T) {
 	application := nsgotest.Start(test, func(scope *core.Scope) core.Node {
 		controller = newDipo(scope)
 		return controller.settingsView(scope)
-	}, nsgotest.Size(460, 420))
+	}, nsgotest.Size(settingsWidth, settingsHeight))
 	application.Post(func() { controller.showMenuBarIcon(true) })
 	application.Settle()
 	if controller.tray == nil {
@@ -213,7 +213,7 @@ func TestNativeSettingsLanguageSelection(test *testing.T) {
 		controller = newDipo(scope)
 		controller.applyLanguage()
 		return controller.settingsView(scope)
-	}, nsgotest.Size(460, 420))
+	}, nsgotest.Size(settingsWidth, settingsHeight))
 	application.Press("id:language-picker")
 	for _, option := range []string{"language-picker-0", "language-picker-1", "language-picker-2", "language-picker-3"} {
 		application.Find("id:" + option)

@@ -300,6 +300,12 @@ func (app *dipo) showSettings() {
 	app.refreshOpenAtLogin()
 }
 
+// The settings window is tall enough to show every section without scrolling.
+const (
+	settingsWidth  = 460
+	settingsHeight = 500
+)
+
 func (app *dipo) openSettingsWindow() {
 	if app.settingsWindow != nil && !app.settingsWindow.Closed() {
 		app.settingsWindow.Show()
@@ -308,7 +314,7 @@ func (app *dipo) openSettingsWindow() {
 	}
 	app.scope.Run(func() {
 		app.settingsWindow = desktop.OpenWindow(app.scope, desktop.WindowOptions{
-			Title: app.messages().Settings(), Width: 460, Height: 420, Key: "settings",
+			Title: app.messages().Settings(), Width: settingsWidth, Height: settingsHeight, Key: "settings",
 			Constraints: desktop.WindowConstraints{NoResize: true},
 		}, app.settingsView)
 		app.settingsWindow.OnClosing(app.scope, func(event *desktop.WindowClosing) {
@@ -539,12 +545,16 @@ func normalizeShortcut(shortcut string) (string, error) {
 	return strings.Join(append(normalized, key), "+"), nil
 }
 
+// checkForUpdates asks the updater to check now and show what it finds, for
+// the application menu and the settings button.
+func (app *dipo) checkForUpdates() { updater.Check(app.scope) }
+
 func (app *dipo) menus() {
 	msgs := app.messages()
 	app.scope.SetApplicationMenu([]desktop.MenuItem{
 		{Label: "Dipo", Items: []desktop.MenuItem{
 			{Label: msgs.AboutDipo(), Role: desktop.MenuAbout},
-			{Label: msgs.CheckForUpdates(), OnSelect: func() { updater.Check(app.scope) }},
+			{Label: msgs.CheckForUpdates(), OnSelect: app.checkForUpdates},
 			{Separator: true},
 			{Label: msgs.SettingsMenu(), Shortcut: "mod+,", OnSelect: app.showSettings},
 			{Separator: true},

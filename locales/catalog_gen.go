@@ -215,6 +215,7 @@ var Parameters = map[string][]string{
 	"CopiedFormat": {"format"},
 	"ChannelValue": {"channel"},
 	"SliderLabel":  {"name"},
+	"AppVersion":   {"version"},
 	"RecentCount":  {"count"},
 }
 
@@ -227,6 +228,7 @@ type Translation struct {
 	CopiedFormat func(format string) string
 	ChannelValue func(channel string) string
 	SliderLabel  func(name string) string
+	AppVersion   func(version string) string
 	RecentCount  func(count int) string
 }
 
@@ -330,6 +332,8 @@ const (
 	textPermissionAllowed
 	textPermissionNotAllowed
 	textPermissionUnchecked
+	textAbout
+	textCheckNow
 	textClearRecentShort
 	textClearRecentTitle
 	textClearRecentBody
@@ -437,6 +441,8 @@ var keyOfText = [numTexts]string{
 	"permissionAllowed",
 	"permissionNotAllowed",
 	"permissionUnchecked",
+	"about",
+	"checkNow",
 	"clearRecentShort",
 	"clearRecentTitle",
 	"clearRecentBody",
@@ -542,6 +548,8 @@ var textsEn = i18n.NewTexts(""+
 	"Allowed"+
 	"Not allowed"+
 	"Not checked"+
+	"About"+
+	"Check Now"+
 	"Clear…"+
 	"Clear recent colors?"+
 	"Favorites are kept."+
@@ -644,6 +652,8 @@ var textsEn = i18n.NewTexts(""+
 		7,
 		11,
 		11,
+		5,
+		9,
 		8,
 		20,
 		19,
@@ -749,6 +759,8 @@ var textsZhHans = i18n.NewTexts(""+
 	"已授权"+
 	"未授权"+
 	"尚未检查"+
+	"关于"+
+	"立即检查"+
 	"清除…"+
 	"清空最近记录？"+
 	"收藏会保留。"+
@@ -850,6 +862,8 @@ var textsZhHans = i18n.NewTexts(""+
 		15,
 		9,
 		9,
+		12,
+		6,
 		12,
 		9,
 		21,
@@ -956,6 +970,8 @@ var textsZhHant = i18n.NewTexts(""+
 	"已授權"+
 	"未授權"+
 	"尚未檢查"+
+	"關於"+
+	"立即檢查"+
 	"清除…"+
 	"清除最近紀錄？"+
 	"收藏會保留。"+
@@ -1058,6 +1074,8 @@ var textsZhHant = i18n.NewTexts(""+
 		9,
 		9,
 		12,
+		6,
+		12,
 		9,
 		21,
 		18,
@@ -1129,6 +1147,9 @@ func Supply(lang string, t Translation) {
 	}
 	if t.SliderLabel != nil {
 		s.SliderLabel = t.SliderLabel
+	}
+	if t.AppVersion != nil {
+		s.AppVersion = t.AppVersion
 	}
 	if t.RecentCount != nil {
 		s.RecentCount = t.RecentCount
@@ -1893,6 +1914,44 @@ func PermissionUnchecked(cx *core.Scope) string { return For(cx).PermissionUnche
 
 // PermissionUnchecked is the package's PermissionUnchecked in the language of msgs.
 func (msgs Messages) PermissionUnchecked() string { return msgs.text(textPermissionUnchecked) }
+
+// About says "About"
+// in the language the app shows under cx.
+func About(cx *core.Scope) string { return For(cx).About() }
+
+// About is the package's About in the language of msgs.
+func (msgs Messages) About() string { return msgs.text(textAbout) }
+
+// AppVersion says "Version {version}"
+// in the language the app shows under cx.
+func AppVersion(cx *core.Scope, version string) string { return For(cx).AppVersion(version) }
+
+// AppVersion is the package's AppVersion in the language of msgs.
+func (msgs Messages) AppVersion(version string) string {
+	if i18n.IsPseudo(msgs.lang) {
+		return i18n.Pseudo(msgs.lang, Messages{lang: Source, mark: true}.AppVersion(version))
+	}
+	for lang := msgs.lang; ; lang = i18n.Parent(lang) {
+		if f := supplied[lang].AppVersion; f != nil {
+			return f(version)
+		}
+		switch lang {
+		case "", "en":
+			return "Version " + msgs.arg(version)
+		case "zh-Hans":
+			return "版本 " + version
+		case "zh-Hant":
+			return "版本 " + version
+		}
+	}
+}
+
+// CheckNow says "Check Now"
+// in the language the app shows under cx.
+func CheckNow(cx *core.Scope) string { return For(cx).CheckNow() }
+
+// CheckNow is the package's CheckNow in the language of msgs.
+func (msgs Messages) CheckNow() string { return msgs.text(textCheckNow) }
 
 // ClearRecentShort says "Clear…"
 // in the language the app shows under cx.

@@ -72,7 +72,19 @@ func (app *dipo) settingsView(cx *core.Scope) core.Node {
 						}},
 					}},
 				}},
+				ui.FormSection{Title: msgs.About(), Children: []core.Node{
+					ui.FormRow{Title: "Dipo", Detail: aboutVersion(msgs, core.App().Version), Control: ui.Button{TestID: "check-updates", Text: msgs.CheckNow(), Variant: ui.ButtonOutline, Size: ui.SizeSmall, OnPress: app.checkForUpdates}},
+				}},
 			}},
 		}}
 	})
+}
+
+// aboutVersion is the line under the app's name in settings, for the version
+// nsgo.yaml sets. A build that did not come from nsgo build has none.
+func aboutVersion(msgs locales.Messages, version string) string {
+	if version == "" {
+		return ""
+	}
+	return msgs.AppVersion(version)
 }

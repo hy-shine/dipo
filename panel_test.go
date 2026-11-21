@@ -57,7 +57,7 @@ func startSettings(test *testing.T, configure func(*dipo)) (*nsgotest.App, *dipo
 			configure(controller)
 		}
 		return controller.settingsView(scope)
-	}, nsgotest.Size(460, 420), nsgotest.Environment(core.Environment{
+	}, nsgotest.Size(settingsWidth, settingsHeight), nsgotest.Environment(core.Environment{
 		OS: core.OSMacOS, Idiom: core.IdiomDesktop, ReduceMotion: true,
 	}))
 	return application, controller
@@ -798,7 +798,7 @@ func TestInitialLanguageFollowsSystem(test *testing.T) {
 				controller = newDipo(scope)
 				controller.applyLanguage()
 				return controller.settingsView(scope)
-			}, nsgotest.Size(460, 420), nsgotest.Environment(core.Environment{
+			}, nsgotest.Size(settingsWidth, settingsHeight), nsgotest.Environment(core.Environment{
 				OS: core.OSMacOS, Idiom: core.IdiomDesktop, Locale: example.locale, ReduceMotion: true,
 			}))
 			application.Find("text:" + example.label)
@@ -845,7 +845,7 @@ func TestSavedLanguageOverridesSystem(test *testing.T) {
 		controller.store, controller.state = store, loaded
 		controller.applyLanguage()
 		return controller.settingsView(scope)
-	}, nsgotest.Size(460, 420), nsgotest.Environment(core.Environment{
+	}, nsgotest.Size(settingsWidth, settingsHeight), nsgotest.Environment(core.Environment{
 		OS: core.OSMacOS, Idiom: core.IdiomDesktop, Locale: "zh-CN", ReduceMotion: true,
 	}))
 	application.Find("text:Language")
@@ -923,6 +923,31 @@ func TestApplicationMenuUpdateFailure(test *testing.T) {
 			}
 			application.Answer(0)
 		})
+	}
+}
+
+func TestSettingsCheckNowChecksForUpdates(test *testing.T) {
+	if nsgotest.Target() != "" {
+		test.Skip("requires the model updater response")
+	}
+	application, _ := startSettings(test, nil)
+	application.Update = func(bool) core.UpdateCheck {
+		return core.UpdateCheck{Err: errors.New("no update source")}
+	}
+	application.Press("id:check-updates")
+	if len(application.UpdateChecks) != 1 || application.UpdateChecks[0] {
+		test.Fatalf("update checks = %v; want one manual check", application.UpdateChecks)
+	}
+	application.Answer(0)
+}
+
+func TestAboutVersionNamesTheVersion(test *testing.T) {
+	msgs := locales.In("zh-Hans")
+	if got := aboutVersion(msgs, "1.2.3"); got != "版本 1.2.3" {
+		test.Fatalf("version line = %q; want %q", got, "版本 1.2.3")
+	}
+	if got := aboutVersion(msgs, ""); got != "" {
+		test.Fatalf("version line = %q for a build with no version; want none", got)
 	}
 }
 
