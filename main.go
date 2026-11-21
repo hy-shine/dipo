@@ -140,6 +140,12 @@ func (app *dipo) colorText(value colour.Color, format colour.Format) string {
 	return value.Text(format)
 }
 
+// outsideSRGB reports whether the current color is a pick that sRGB cannot
+// show, so its HEX, RGB and HSL are the nearest sRGB color.
+func (app *dipo) outsideSRGB() bool {
+	return app.measured != nil && app.current == app.original && !app.measured.Inside()
+}
+
 // formatName is how the copy notice names a copy format.
 func formatName(format colour.Format) string {
 	switch format {

@@ -297,6 +297,8 @@ const (
 	textColorFileUnreadable
 	textApproximateSRGB
 	textApproximateDisplayP3
+	textOutsideSRGB
+	textOutsideSRGBDetail
 	textInvalidShortcutInput
 	textShortcutUnavailable
 	textAboutDipo
@@ -409,6 +411,8 @@ var keyOfText = [numTexts]string{
 	"colorFileUnreadable",
 	"approximateSRGB",
 	"approximateDisplayP3",
+	"outsideSRGB",
+	"outsideSRGBDetail",
 	"invalidShortcutInput",
 	"shortcutUnavailable",
 	"aboutDipo",
@@ -519,6 +523,8 @@ var textsEn = i18n.NewTexts(""+
 	"The existing color file could not be read and is kept. This session uses memory only."+
 	"Approximate sRGB"+
 	"Approximate Display P3"+
+	"Outside sRGB"+
+	"This color is outside sRGB. HEX, RGB and HSL give the nearest sRGB color; P3 HEX and CSS P3 keep it."+
 	"Use Control, Option or Command with a letter, number or comma."+
 	"This shortcut is invalid or already in use. Try another."+
 	"About Dipo"+
@@ -626,6 +632,8 @@ var textsEn = i18n.NewTexts(""+
 		85,
 		16,
 		22,
+		12,
+		100,
 		62,
 		56,
 		10,
@@ -736,6 +744,8 @@ var textsZhHans = i18n.NewTexts(""+
 	"原有颜色文件无法读取，已保留。本次只在内存使用。"+
 	"sRGB 近似值"+
 	"Display P3 近似值"+
+	"超出 sRGB"+
+	"这个颜色超出 sRGB。HEX、RGB 和 HSL 给出最接近的 sRGB 颜色；P3 HEX 和 CSS P3 保留原色。"+
 	"请同时按下 Control、Option 或 Command，以及一个字母、数字或逗号。"+
 	"快捷键无效或已被占用，请换一个组合。"+
 	"关于 Dipo"+
@@ -843,6 +853,8 @@ var textsZhHans = i18n.NewTexts(""+
 		72,
 		14,
 		20,
+		11,
+		110,
 		86,
 		54,
 		11,
@@ -953,6 +965,8 @@ var textsZhHant = i18n.NewTexts(""+
 	"原有顏色檔案無法讀取，已保留。本次只在記憶體使用。"+
 	"sRGB 近似值"+
 	"Display P3 近似值"+
+	"超出 sRGB"+
+	"這個顏色超出 sRGB。HEX、RGB 和 HSL 提供最接近的 sRGB 顏色；P3 HEX 和 CSS P3 保留原色。"+
 	"請同時按下 Control、Option 或 Command，以及一個字母、數字或逗號。"+
 	"快速鍵無效或已被佔用，請換一個組合。"+
 	"關於 Dipo"+
@@ -1060,6 +1074,8 @@ var textsZhHant = i18n.NewTexts(""+
 		75,
 		14,
 		20,
+		11,
+		110,
 		86,
 		54,
 		11,
@@ -1684,6 +1700,20 @@ func ApproximateDisplayP3(cx *core.Scope) string { return For(cx).ApproximateDis
 
 // ApproximateDisplayP3 is the package's ApproximateDisplayP3 in the language of msgs.
 func (msgs Messages) ApproximateDisplayP3() string { return msgs.text(textApproximateDisplayP3) }
+
+// OutsideSRGB says "Outside sRGB"
+// in the language the app shows under cx.
+func OutsideSRGB(cx *core.Scope) string { return For(cx).OutsideSRGB() }
+
+// OutsideSRGB is the package's OutsideSRGB in the language of msgs.
+func (msgs Messages) OutsideSRGB() string { return msgs.text(textOutsideSRGB) }
+
+// OutsideSRGBDetail says "This color is outside sRGB. HEX, RGB and HSL give the nearest sRGB color; P3 HEX and CSS P3 keep it."
+// in the language the app shows under cx.
+func OutsideSRGBDetail(cx *core.Scope) string { return For(cx).OutsideSRGBDetail() }
+
+// OutsideSRGBDetail is the package's OutsideSRGBDetail in the language of msgs.
+func (msgs Messages) OutsideSRGBDetail() string { return msgs.text(textOutsideSRGBDetail) }
 
 // InvalidShortcutInput says "Use Control, Option or Command with a letter, number or comma."
 // in the language the app shows under cx.

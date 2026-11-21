@@ -91,19 +91,22 @@ func runPickerChecks(outputDirectory: String?) throws {
     }
     if let outputDirectory {
         try FileManager.default.createDirectory(atPath: outputDirectory, withIntermediateDirectories: true)
-        let screenshotImage = try image(width: 1600, height: 1000) { column, row in
-            if column > 680 && column < 920 && row > 360 && row < 620 {
-                return Pixel(red: 19, green: 22, blue: 27)
+        // The second scene picks a Display P3 green, which the loupe marks as outside sRGB.
+        for (name, spaceName, square) in [("picker-native.png", CGColorSpace.sRGB, Pixel(red: 19, green: 22, blue: 27)), ("picker-native-p3.png", CGColorSpace.displayP3, Pixel(red: 0, green: 255, blue: 0))] {
+            let screenshotImage = try image(width: 1600, height: 1000, space: spaceName) { column, row in
+                if column > 680 && column < 920 && row > 360 && row < 620 {
+                    return square
+                }
+                return Pixel(red: UInt8(220 + column % 20), green: UInt8(220 + row % 20), blue: 240)
             }
-            return Pixel(red: UInt8(220 + column % 20), green: UInt8(220 + row % 20), blue: 240)
+            let snapshot = try FrozenDisplay(frame: bounds, image: screenshotImage)
+            let view = PickerView(snapshot: snapshot)
+            view.selection = PixelPosition(column: 720, row: 480)
+            let bitmap = NSBitmapImageRep(cgImage: try renderPickerView(view, scale: 2))
+            guard let png = bitmap.representation(using: .png, properties: [:]) else { throw PickerFailure.bitmap }
+            try png.write(to: URL(fileURLWithPath: outputDirectory).appendingPathComponent(name))
+            try expect(bitmap.pixelsWide > 0 && bitmap.pixelsHigh > 0, "native rendering produced empty image")
         }
-        let snapshot = try FrozenDisplay(frame: bounds, image: screenshotImage)
-        let view = PickerView(snapshot: snapshot)
-        view.selection = PixelPosition(column: 720, row: 480)
-        let bitmap = NSBitmapImageRep(cgImage: try renderPickerView(view, scale: 2))
-        guard let png = bitmap.representation(using: .png, properties: [:]) else { throw PickerFailure.bitmap }
-        try png.write(to: URL(fileURLWithPath: outputDirectory).appendingPathComponent("picker-native.png"))
-        try expect(bitmap.pixelsWide > 0 && bitmap.pixelsHigh > 0, "native rendering produced empty image")
     }
     FileHandle.standardOutput.write(Data("native picker checks passed: \(checks)\n".utf8))
 }

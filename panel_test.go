@@ -248,10 +248,50 @@ func TestPanelRestoreStripOnSwatch(test *testing.T) {
 	}
 }
 
-func TestPanelCopyPreviewForFormatsOtherThanHEX(test *testing.T) {
+func TestPanelColorSpaceBadgeWarnsWhilePickIsOutsideSRGB(test *testing.T) {
 	application, controller := startPanel(test, nil)
-	if application.Exists("id:copy-preview") {
-		test.Fatal("HEX shows a preview that repeats the color field")
+	outside := locales.In(string(library.LanguageSimplified)).OutsideSRGB()
+	expect := func(step string, warns bool) {
+		test.Helper()
+		application.Settle()
+		texts := application.Texts()
+		// A color in sRGB gets no label at all.
+		if slices.Contains(texts, outside) != warns || slices.Contains(texts, "sRGB") {
+			test.Fatalf("%s: texts %q; want the badge to warn: %t", step, application.Texts(), warns)
+		}
+	}
+	expect("at start", false)
+	application.Post(func() { controller.acceptPick(colour.SRGB{R: -0.5116, G: 1.0183, B: -0.3107}) })
+	expect("a pick outside sRGB", true)
+	application.Focus("id:alpha-slider-thumb")
+	application.Key("Home")
+	expect("an edited pick", false)
+	application.Press("id:restore-color")
+	expect("the restored pick", true)
+	application.Post(func() { controller.acceptPick(colour.Opaque(255, 107, 53).SRGB()) })
+	expect("a pick inside sRGB", false)
+}
+
+func TestPanelCopyFormatsNameTheirSpace(test *testing.T) {
+	application, _ := startPanel(test, nil)
+	application.Press("id:copy-format")
+	count := func(text string) (n int) {
+		for _, got := range application.Texts() {
+			if got == text {
+				n++
+			}
+		}
+		return n
+	}
+	if srgb, p3 := count("sRGB"), count("Display P3"); srgb != 3 || p3 != 2 {
+		test.Fatalf("the copy format menu names sRGB %d times and Display P3 %d times; want 3 and 2: %q", srgb, p3, application.Texts())
+	}
+}
+
+func TestPanelCopyPreviewShowsTheTextToCopy(test *testing.T) {
+	application, controller := startPanel(test, nil)
+	if got, want := application.Find("id:copy-preview").Text, controller.current.Text(colour.HEX); got != want {
+		test.Fatalf("HEX: copy preview = %q; want %q", got, want)
 	}
 	for option, format := range map[string]colour.Format{"id:copy-format-1": colour.RGB, "id:copy-format-3": colour.P3HEX, "id:copy-format-4": colour.P3} {
 		application.Press("id:copy-format")
@@ -262,8 +302,8 @@ func TestPanelCopyPreviewForFormatsOtherThanHEX(test *testing.T) {
 	}
 	application.Press("id:copy-format")
 	application.Press("id:copy-format-0")
-	if application.Exists("id:copy-preview") {
-		test.Fatal("preview stayed after switching back to HEX")
+	if got, want := application.Find("id:copy-preview").Text, controller.current.Text(colour.HEX); got != want {
+		test.Fatalf("back to HEX: copy preview = %q; want %q", got, want)
 	}
 }
 
