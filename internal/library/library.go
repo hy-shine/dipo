@@ -8,6 +8,9 @@ import (
 
 const RecentLimit = 20
 
+// DefaultShortcut is the pick shortcut a new library starts with.
+const DefaultShortcut = "Ctrl+Alt+C"
+
 type Theme string
 
 const (
@@ -53,7 +56,7 @@ type State struct {
 }
 
 func New() State {
-	return State{Version: 1, Format: colour.HEX, Shortcut: "Ctrl+Alt+C", Theme: ThemeSystem}
+	return State{Version: 1, Format: colour.HEX, Shortcut: DefaultShortcut, Theme: ThemeSystem}
 }
 
 func (state *State) Picked(value colour.Color) {

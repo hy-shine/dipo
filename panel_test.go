@@ -620,6 +620,27 @@ func TestSettingsShortcutRecorderTakesTheKeysPressed(test *testing.T) {
 	}
 }
 
+func TestSettingsRestoresTheDefaultShortcut(test *testing.T) {
+	application, controller := startSettings(test, nil)
+	if !application.Find("id:shortcut-default").Props.Disabled {
+		test.Fatal("restore is offered while the shortcut is already the default")
+	}
+	application.Focus("id:shortcut-recorder")
+	application.Key("ctrl+alt+k")
+	application.Settle()
+	if controller.state.Shortcut != "Ctrl+Alt+K" || application.Find("id:shortcut-default").Props.Disabled {
+		test.Fatalf("after recording, shortcut %q, restore disabled %t; want Ctrl+Alt+K and restore offered", controller.state.Shortcut, application.Find("id:shortcut-default").Props.Disabled)
+	}
+	application.Press("id:shortcut-default")
+	application.Settle()
+	if controller.state.Shortcut != library.DefaultShortcut || controller.registeredShortcut != "ctrl+alt+c" || controller.shortcutErr != nil {
+		test.Fatalf("after restore, shortcut %q, registered %q, error %t; want %s registered", controller.state.Shortcut, controller.registeredShortcut, controller.shortcutErr != nil, library.DefaultShortcut)
+	}
+	if !application.Find("id:shortcut-default").Props.Disabled || !slices.Contains(application.Texts(), library.DefaultShortcut) {
+		test.Fatalf("after restore the field shows %q and restore stays offered", application.Texts())
+	}
+}
+
 func TestSettingsShortcutRecorderRefusesWhatCannotBeAShortcut(test *testing.T) {
 	application, controller := startSettings(test, nil)
 	want := controller.state.Shortcut
