@@ -18,8 +18,8 @@ Dipo is a focused color picker for macOS. It is built for quick, repeated use, w
 - Copy HEX, CSS RGB, or CSS HSL, with a configurable global pick shortcut.
 - Edit in RGB, HSB, or HSL, including opacity.
 - Check text/background contrast against WCAG AA thresholds.
-- Keep the 20 most recent colors and a separate local favorites list.
-- Choose in Settings whether Dipo opens at login, shows its menu bar icon, and copies a color right after a pick.
+- Keep the 20 most recent colors and a separate local favorites list; the menu bar icon lists the recent ones too.
+- Choose in Settings whether Dipo opens at login, shows its menu bar icon and Dock icon (one of them always stays), and copies a color right after a pick.
 
 ## Install
 
@@ -49,7 +49,7 @@ The build bundles the native screen picker. The app is signed ad hoc unless `COD
 1. Select **Pick**, or use the global shortcut (default `Ctrl+Alt+C`; `Control+Option+C` on macOS). Click a pixel to pick it; press Esc or right-click to cancel. The color is copied in the selected format unless **Copy After Picking** is off in Settings.
 2. Use **Copy** for the selected format. Recent and favorite colors can be copied by clicking them.
 3. Switch between **Contrast**, **Recent**, and **Favorites** below the editor. Recent colors show a count and can be cleared without deleting favorites.
-4. Open **Settings** (the top-right gear, or `⌘,`) for login, menu bar, copy and shortcut options. Under **About**, **Check Now** looks for a newer version.
+4. Open **Settings** (the top-right gear, or `⌘,`) for login, menu bar, Dock, copy and shortcut options. To change the pick shortcut, click its field and press the new combination. Under **About**, **Check Now** looks for a newer version.
 
 ### Permissions
 
