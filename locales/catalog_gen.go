@@ -277,6 +277,7 @@ const (
 	textContrastBothFail
 	textContrastCaption
 	textNoRecentColors
+	textRecentColors
 	textNoFavoriteColors
 	textPickAColor
 	textClickToCopy
@@ -387,6 +388,7 @@ var keyOfText = [numTexts]string{
 	"contrastBothFail",
 	"contrastCaption",
 	"noRecentColors",
+	"recentColors",
 	"noFavoriteColors",
 	"pickAColor",
 	"clickToCopy",
@@ -495,6 +497,7 @@ var textsEn = i18n.NewTexts(""+
 	"Normal text fails AA · Large text fails AA"+
 	"Contrast of the two colors"+
 	"No recent colors"+
+	"Recent Colors"+
 	"No favorite colors"+
 	"Pick a color"+
 	"Click a color to copy it"+
@@ -600,6 +603,7 @@ var textsEn = i18n.NewTexts(""+
 		43,
 		26,
 		16,
+		13,
 		18,
 		12,
 		24,
@@ -708,6 +712,7 @@ var textsZhHans = i18n.NewTexts(""+
 	"普通文字未达 AA · 大文字未达 AA"+
 	"两种输入颜色的对比度"+
 	"暂无最近颜色"+
+	"最近的颜色"+
 	"暂无收藏颜色"+
 	"取一个颜色"+
 	"点击颜色复制"+
@@ -813,6 +818,7 @@ var textsZhHans = i18n.NewTexts(""+
 		43,
 		30,
 		18,
+		15,
 		18,
 		15,
 		18,
@@ -921,6 +927,7 @@ var textsZhHant = i18n.NewTexts(""+
 	"一般文字未達 AA · 大型文字未達 AA"+
 	"兩種輸入顏色的對比度"+
 	"尚無最近顏色"+
+	"最近的顏色"+
 	"尚無收藏顏色"+
 	"取一個顏色"+
 	"點擊顏色複製"+
@@ -1026,6 +1033,7 @@ var textsZhHant = i18n.NewTexts(""+
 		46,
 		30,
 		18,
+		15,
 		18,
 		15,
 		18,
@@ -1537,6 +1545,13 @@ func NoRecentColors(cx *core.Scope) string { return For(cx).NoRecentColors() }
 
 // NoRecentColors is the package's NoRecentColors in the language of msgs.
 func (msgs Messages) NoRecentColors() string { return msgs.text(textNoRecentColors) }
+
+// RecentColors says "Recent Colors"
+// in the language the app shows under cx.
+func RecentColors(cx *core.Scope) string { return For(cx).RecentColors() }
+
+// RecentColors is the package's RecentColors in the language of msgs.
+func (msgs Messages) RecentColors() string { return msgs.text(textRecentColors) }
 
 // NoFavoriteColors says "No favorite colors"
 // in the language the app shows under cx.
