@@ -21,6 +21,10 @@ Dipo is a focused color picker for macOS. It is built for quick, repeated use, w
 - Keep the 20 most recent colors and a separate local favorites list.
 - Choose in Settings whether Dipo opens at login, shows its menu bar icon, and copies a color right after a pick.
 
+## Install
+
+Download the disk image from the [latest release](https://github.com/hy-shine/dipo/releases/latest), open it, and drag Dipo into Applications. It needs macOS 14 or later, and the release is for Apple silicon. A `.sha256` file next to the disk image holds its checksum. Dipo is not notarized, so see [Permissions](#permissions) for the first launch. Once installed, **Settings → About → Check Now** looks for a newer version.
+
 ## Quick start
 
 ### Requirements
